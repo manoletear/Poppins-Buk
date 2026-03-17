@@ -5,7 +5,7 @@ import { usePayroll, useEmployees } from '@/hooks/useBuk';
 import type { PoppinsLiquidacion } from '@/types/buk';
 
 function LiquidacionDetail({ liq, empName, onClose }: { liq: PoppinsLiquidacion; empName: string; onClose: () => void }) {
-  const fmt = (n: number) => '$' + n.toLocaleString('es-CL');
+  const fmt = (n: number) => '$' + (n ?? 0).toLocaleString('es-CL');
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -52,7 +52,7 @@ export default function LiquidacionesPage() {
   const [selected, setSelected] = useState<PoppinsLiquidacion | null>(null);
 
   const empName = (id: number) => employees.find(e => e.id === id)?.nombreCompleto || `Empleado #${id}`;
-  const fmt = (n: number) => '$' + n.toLocaleString('es-CL');
+  const fmt = (n: number) => '$' + (n ?? 0).toLocaleString('es-CL');
 
   return (
     <div className="space-y-5">
