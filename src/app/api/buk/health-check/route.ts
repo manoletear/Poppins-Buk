@@ -1,8 +1,24 @@
 import { NextResponse } from 'next/server';
-import { getBukSDK } from '@/lib/buk-sdk';
+
+const useMock = process.env.USE_MOCK_DATA === 'true';
 
 export async function GET() {
   try {
+    if (useMock) {
+      return NextResponse.json(
+        {
+          data: {
+            ok: true,
+            latencyMs: 5,
+            status: 'ok',
+            mode: 'mock',
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    const { getBukSDK } = await import('@/lib/buk-sdk');
     const sdk = getBukSDK();
     const result = await sdk.healthCheck();
     return NextResponse.json({ data: result }, { status: result.ok ? 200 : 503 });
