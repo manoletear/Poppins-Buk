@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { User, Settings, LogOut } from 'lucide-react';
+import { User, Settings, LogOut, Calendar, Search } from 'lucide-react';
 
 export default function Topbar() {
   const period = 'Marzo 2026';
@@ -24,12 +24,12 @@ export default function Topbar() {
     <div className="h-[52px] min-h-[52px] bg-white border-b border-gray-200 flex items-center px-4 gap-[10px] z-50">
       {/* Period */}
       <div className="flex items-center gap-[6px] px-3 py-[5px] border border-gray-200 rounded-[20px] text-[13px] font-medium text-gray-700 cursor-pointer hover:bg-gray-50 whitespace-nowrap">
-        📅 {period}
+        <Calendar className="w-3.5 h-3.5 text-[#F0197A]" /> {period}
       </div>
 
       {/* Search */}
       <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 h-[34px] flex-1 max-w-[380px]">
-        <span className="text-gray-400 text-sm">🔍</span>
+        <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
         <input
           placeholder="Buscar (Ctrl + B)"
           className="border-none bg-transparent outline-none font-inherit text-[13px] text-gray-700 w-full placeholder:text-gray-400"

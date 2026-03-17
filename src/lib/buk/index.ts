@@ -12,7 +12,12 @@ import type { BukEmployeeSummary } from '@/lib/buk-sdk/types/employees';
 import { mapBukEmployees, mapBukPayrollItems, mapBukAbsences } from './mappers';
 import { MOCK_EMPLOYEES, MOCK_PAYROLL_ITEMS, MOCK_ABSENCES, MOCK_OVERTIME, MOCK_BENEFITS } from './mock-data';
 import type { Employee, Payroll, Absence, Benefit } from '@/types/database';
-import { createClient } from '@/lib/supabase/server';
+
+// Lazy import to avoid `cookies()` crash in mock mode
+async function getSupabase() {
+  const { createClient } = await import('@/lib/supabase/server');
+  return createClient();
+}
 
 const useMock = process.env.USE_MOCK_DATA === 'true';
 
@@ -50,7 +55,7 @@ export async function getEmployees() {
 
   // Intentar Supabase primero
   try {
-    const supabase = await createClient();
+    const supabase = await getSupabase();
     const { data, error } = await supabase
       .from('employees')
       .select('*')
@@ -132,7 +137,7 @@ export async function getPayrollItems(employeeId?: number) {
 
   // Intentar Supabase
   try {
-    const supabase = await createClient();
+    const supabase = await getSupabase();
     let query = supabase.from('payroll').select('*').order('periodo', { ascending: false });
     if (employeeId) {
       query = query.eq('employee_id', employeeId);
@@ -214,7 +219,7 @@ export async function getAbsences(employeeId?: number) {
 
   // Intentar Supabase
   try {
-    const supabase = await createClient();
+    const supabase = await getSupabase();
     let query = supabase.from('absences').select('*').order('fecha_inicio', { ascending: false });
     if (employeeId) {
       query = query.eq('employee_id', employeeId);
@@ -266,7 +271,7 @@ export async function createAbsence(absenceData: Record<string, unknown>) {
 
   // Escribir en Supabase
   try {
-    const supabase = await createClient();
+    const supabase = await getSupabase();
     const insertData = {
       employee_id: absenceData.employee_id as string,
       tipo: absenceData.tipo as string,
@@ -355,7 +360,7 @@ export async function getBenefits() {
 
   // Intentar Supabase
   try {
-    const supabase = await createClient();
+    const supabase = await getSupabase();
     const { data, error } = await supabase
       .from('benefits')
       .select('*')
