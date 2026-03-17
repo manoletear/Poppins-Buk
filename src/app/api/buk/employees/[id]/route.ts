@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const useMock = process.env.USE_MOCK_DATA === 'true';
+const useMock = process.env.USE_MOCK_DATA?.trim() === 'true';
 
 const MOCK_EMPLOYEES = [
   {

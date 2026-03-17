@@ -1,17 +1,48 @@
 'use client';
 
-import { useState } from 'react';
-import { usePayroll, useEmployees } from '@/hooks/useBuk';
-import type { PoppinsLiquidacion } from '@/types/buk';
+import { useState, useEffect } from 'react';
 
-function LiquidacionDetail({ liq, empName, onClose }: { liq: PoppinsLiquidacion; empName: string; onClose: () => void }) {
-  const fmt = (n: number) => '$' + (n ?? 0).toLocaleString('es-CL');
+interface Liquidacion {
+  id: number;
+  empleadoId: number;
+  periodo: string;
+  sueldoBase: number;
+  sueldoBruto: number;
+  horasExtra: number;
+  bonos: number;
+  gratificacion: number;
+  descSalud: number;
+  descAfp: number;
+  descCesantia: number;
+  impuestoUnico: number;
+  totalHaberes: number;
+  totalDescuentos: number;
+  liquido: number;
+  estado: string;
+}
+
+interface Empleado {
+  id: number;
+  nombreCompleto: string;
+}
+
+function safe(n: unknown): number {
+  if (typeof n === 'number' && !isNaN(n)) return n;
+  if (typeof n === 'string') { const p = parseFloat(n); if (!isNaN(p)) return p; }
+  return 0;
+}
+
+function fmt(n: unknown): string {
+  return '$' + safe(n).toLocaleString('es-CL');
+}
+
+function LiquidacionDetail({ liq, empName, onClose }: { liq: Liquidacion; empName: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="bg-gradient-to-r from-[#1B1564] to-[#3730A3] p-5 text-white">
           <div className="text-lg font-bold">{empName}</div>
-          <div className="text-white/60 text-sm">Liquidación {liq.periodo}</div>
+          <div className="text-white/60 text-sm">Liquidación {liq.periodo || '-'}</div>
         </div>
         <div className="p-5 space-y-3 text-sm">
           <div className="font-semibold text-gray-700 text-xs uppercase tracking-wide">Haberes</div>
@@ -47,12 +78,32 @@ function LiquidacionDetail({ liq, empName, onClose }: { liq: PoppinsLiquidacion;
 }
 
 export default function LiquidacionesPage() {
-  const { data: payroll, loading, error } = usePayroll();
-  const { data: employees } = useEmployees();
-  const [selected, setSelected] = useState<PoppinsLiquidacion | null>(null);
+  const [payroll, setPayroll] = useState<Liquidacion[]>([]);
+  const [employees, setEmployees] = useState<Empleado[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Liquidacion | null>(null);
 
-  const empName = (id: number) => employees.find(e => e.id === id)?.nombreCompleto || `Empleado #${id}`;
-  const fmt = (n: number) => '$' + (n ?? 0).toLocaleString('es-CL');
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/buk/payroll').then(r => r.json()).catch(() => ({ data: [] })),
+      fetch('/api/buk/employees').then(r => r.json()).catch(() => ({ data: [] })),
+    ]).then(([payRes, empRes]) => {
+      const payData = Array.isArray(payRes?.data) ? payRes.data : [];
+      const empData = Array.isArray(empRes?.data) ? empRes.data : [];
+      setPayroll(payData);
+      setEmployees(empData);
+      setLoading(false);
+    }).catch(err => {
+      setError(err?.message || 'Error desconocido');
+      setLoading(false);
+    });
+  }, []);
+
+  const empName = (id: number) => {
+    const emp = employees.find(e => e.id === id);
+    return emp?.nombreCompleto || `Empleado #${id}`;
+  };
 
   return (
     <div className="space-y-5">
@@ -65,6 +116,8 @@ export default function LiquidacionesPage() {
 
       {loading ? (
         <div className="text-sm text-gray-400">Cargando liquidaciones...</div>
+      ) : payroll.length === 0 ? (
+        <div className="text-sm text-gray-400">No hay liquidaciones para mostrar.</div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="w-full text-sm">
@@ -85,8 +138,8 @@ export default function LiquidacionesPage() {
                   className="border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer"
                   onClick={() => setSelected(liq)}
                 >
-                  <td className="px-5 py-3 font-medium text-gray-800">{empName(liq.empleadoId)}</td>
-                  <td className="px-3 py-3 text-gray-600">{liq.periodo}</td>
+                  <td className="px-5 py-3 font-medium text-gray-800">{empName(safe(liq.empleadoId))}</td>
+                  <td className="px-3 py-3 text-gray-600">{liq.periodo || '-'}</td>
                   <td className="px-3 py-3 text-right font-medium">{fmt(liq.sueldoBruto)}</td>
                   <td className="px-3 py-3 text-right text-red-500">-{fmt(liq.totalDescuentos)}</td>
                   <td className="px-3 py-3 text-right font-bold text-emerald-600">{fmt(liq.liquido)}</td>
@@ -94,7 +147,7 @@ export default function LiquidacionesPage() {
                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                       liq.estado === 'pagado' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'
                     }`}>
-                      {liq.estado}
+                      {liq.estado || 'pendiente'}
                     </span>
                   </td>
                 </tr>
@@ -104,7 +157,7 @@ export default function LiquidacionesPage() {
         </div>
       )}
 
-      {selected && <LiquidacionDetail liq={selected} empName={empName(selected.empleadoId)} onClose={() => setSelected(null)} />}
+      {selected && <LiquidacionDetail liq={selected} empName={empName(safe(selected.empleadoId))} onClose={() => setSelected(null)} />}
     </div>
   );
 }

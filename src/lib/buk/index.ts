@@ -19,7 +19,7 @@ async function getSupabase() {
   return createClient();
 }
 
-const useMock = process.env.USE_MOCK_DATA === 'true';
+const useMock = process.env.USE_MOCK_DATA?.trim() === 'true';
 
 // ── Helper: mapear BukEmployeeSummary → PoppinsEmployee shape ──
 
