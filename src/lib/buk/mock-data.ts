@@ -137,6 +137,37 @@ export const MOCK_ABSENCES: BukAbsenceRequest[] = [
     start_date: '2026-02-28', end_date: '2026-02-28', days: 1,
     status: 'pending', observations: 'Trámite personal',
   },
+  {
+    id: 5, employee_id: 4, absence_type: 'vacation',
+    start_date: '2026-01-05', end_date: '2026-01-12', days: 7,
+    status: 'approved', observations: 'Vacaciones verano',
+  },
+];
+
+export const MOCK_OVERTIME: Array<{
+  id: number;
+  employee_id: number;
+  date: string;
+  hours: number;
+  status: 'pending' | 'approved' | 'rejected';
+  observations: string;
+}> = [
+  {
+    id: 1, employee_id: 1, date: '2026-02-15', hours: 3,
+    status: 'approved', observations: 'Cuidado emergencia',
+  },
+  {
+    id: 2, employee_id: 2, date: '2026-02-20', hours: 2,
+    status: 'approved', observations: 'Atención adicional',
+  },
+  {
+    id: 3, employee_id: 3, date: '2026-03-01', hours: 4,
+    status: 'pending', observations: 'Solicitud en proceso',
+  },
+  {
+    id: 4, employee_id: 4, date: '2026-02-28', hours: 2,
+    status: 'approved', observations: 'Limpieza especial',
+  },
 ];
 
 export const MOCK_BENEFITS: BukBenefit[] = [

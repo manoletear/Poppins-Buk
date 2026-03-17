@@ -10,7 +10,7 @@
 import { getBukSDK } from '@/lib/buk-sdk';
 import type { BukEmployeeSummary } from '@/lib/buk-sdk/types/employees';
 import { mapBukEmployees, mapBukPayrollItems, mapBukAbsences } from './mappers';
-import { MOCK_EMPLOYEES, MOCK_PAYROLL_ITEMS, MOCK_ABSENCES, MOCK_BENEFITS } from './mock-data';
+import { MOCK_EMPLOYEES, MOCK_PAYROLL_ITEMS, MOCK_ABSENCES, MOCK_OVERTIME, MOCK_BENEFITS } from './mock-data';
 import type { Employee, Payroll, Absence, Benefit } from '@/types/database';
 import { createClient } from '@/lib/supabase/server';
 
@@ -289,6 +289,61 @@ export async function createAbsence(absenceData: Record<string, unknown>) {
   }
 
   return { success: false, error: 'Absence creation requires Supabase or specific SDK method' };
+}
+
+// ── Overtime ──
+
+export async function getOvertime(employeeId?: number, startDate?: string, endDate?: string) {
+  if (useMock) {
+    let items = MOCK_OVERTIME;
+    if (employeeId) {
+      items = items.filter(o => o.employee_id === employeeId);
+    }
+    if (startDate) {
+      items = items.filter(o => o.date >= startDate);
+    }
+    if (endDate) {
+      items = items.filter(o => o.date <= endDate);
+    }
+    return items.map(item => ({
+      id: item.id,
+      empleadoId: item.employee_id,
+      fecha: item.date,
+      horas: item.hours,
+      estado: item.status === 'approved' ? 'Aprobado' : item.status === 'rejected' ? 'Rechazado' : 'Pendiente',
+      observaciones: item.observations,
+    }));
+  }
+
+  // Fallback: BUK SDK
+  const sdk = getBukSDK();
+  const filters: Record<string, unknown> = {};
+  if (employeeId) filters.employee_id = employeeId;
+  if (startDate) filters.start_date = startDate;
+  if (endDate) filters.end_date = endDate;
+
+  const response = await sdk.overtime.listAll(
+    Object.keys(filters).length > 0 ? filters : undefined
+  );
+  return response.map(item => ({
+    id: item.id,
+    empleadoId: item.employee_id,
+    fecha: item.date,
+    horas: item.hours,
+    estado: item.status === 'approved' ? 'Aprobado' : item.status === 'rejected' ? 'Rechazado' : 'Pendiente',
+    observaciones: item.observations || '',
+  }));
+}
+
+export async function createOvertime(overtimeData: Record<string, unknown>) {
+  if (useMock) {
+    return { success: true, id: Date.now() };
+  }
+
+  // Fallback: BUK SDK
+  const sdk = getBukSDK();
+  const result = await sdk.overtime.create(overtimeData as never);
+  return { success: true, id: result.id };
 }
 
 // ── Benefits ──

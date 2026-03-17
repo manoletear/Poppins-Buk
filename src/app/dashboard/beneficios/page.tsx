@@ -9,11 +9,18 @@ export default function BeneficiosPage() {
 
   const icons = ['🎁', '🏥', '🎓', '🚌', '🍽️', '💊'];
 
+  const handleNewBenefit = () => {
+    alert('Formulario de nuevo beneficio - Funcionalidad en desarrollo');
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">Beneficios</h1>
-        <button className="px-4 py-2 bg-[#F0197A] text-white text-sm font-semibold rounded-lg hover:bg-[#d4166c] transition">
+        <button
+          onClick={handleNewBenefit}
+          className="px-4 py-2 bg-[#F0197A] text-white text-sm font-semibold rounded-lg hover:bg-[#d4166c] transition"
+        >
           + Nuevo Beneficio
         </button>
       </div>

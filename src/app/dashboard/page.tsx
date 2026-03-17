@@ -10,11 +10,12 @@ interface KpiCardProps {
   sub?: string;
   icon: React.ReactNode;
   bgColor: string;
+  href?: string;
 }
 
-function KpiCard({ label, value, sub, icon, bgColor }: KpiCardProps) {
-  return (
-    <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-2">
+function KpiCard({ label, value, sub, icon, bgColor, href }: KpiCardProps) {
+  const content = (
+    <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-2 hover:shadow-md hover:border-[#F0197A]/30 transition-all">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</span>
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${bgColor}`}>
@@ -25,6 +26,12 @@ function KpiCard({ label, value, sub, icon, bgColor }: KpiCardProps) {
       {sub && <div className="text-xs text-gray-400">{sub}</div>}
     </div>
   );
+
+  if (href) {
+    return <Link href={href}>{content}</Link>;
+  }
+
+  return content;
 }
 
 function StatusBadge({ estado }: { estado: string }) {
@@ -168,6 +175,7 @@ export default function DashboardPage() {
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
+          href="/dashboard/colaboradoras"
           icon={<Users className="w-5 h-5 text-white" />}
           label="Colaboradoras"
           value={loadingEmp ? '...' : employees.length}
@@ -175,6 +183,7 @@ export default function DashboardPage() {
           bgColor="bg-emerald-500"
         />
         <KpiCard
+          href="/dashboard/liquidaciones"
           icon={<DollarSign className="w-5 h-5 text-white" />}
           label="Costo Mensual"
           value={loadingPay ? '...' : fmt(costoMensual)}
@@ -182,16 +191,18 @@ export default function DashboardPage() {
           bgColor="bg-blue-500"
         />
         <KpiCard
+          href="/dashboard/vacaciones"
           icon={<Clock className="w-5 h-5 text-white" />}
           label="Solicitudes Pendientes"
           value={loadingAbs ? '...' : solicitudesPendientes}
           bgColor="bg-amber-500"
         />
         <KpiCard
+          href="/dashboard/horas-extra"
           icon={<Calendar className="w-5 h-5 text-white" />}
-          label="Período"
-          value="Mar 2026"
-          sub="En curso"
+          label="Horas Extra"
+          value={loadingAbs ? '...' : '0h'}
+          sub="Este mes"
           bgColor="bg-[#1B1564]"
         />
       </div>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBukSDK } from '@/lib/buk-sdk';
+import { getOvertime, createOvertime } from '@/lib/buk';
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,15 +8,10 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    const sdk = getBukSDK();
-
-    const filters: Record<string, unknown> = {};
-    if (employeeId) filters.employee_id = Number(employeeId);
-    if (startDate) filters.start_date = startDate;
-    if (endDate) filters.end_date = endDate;
-
-    const overtime = await sdk.overtime.listAll(
-      Object.keys(filters).length > 0 ? filters : undefined
+    const overtime = await getOvertime(
+      employeeId ? Number(employeeId) : undefined,
+      startDate || undefined,
+      endDate || undefined
     );
     return NextResponse.json({ data: overtime });
   } catch (error) {
@@ -31,8 +26,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const sdk = getBukSDK();
-    const result = await sdk.overtime.create(body as never);
+    const result = await createOvertime(body);
     return NextResponse.json({ data: result }, { status: 201 });
   } catch (error) {
     console.error('[BUK] Error creating overtime:', error);

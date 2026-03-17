@@ -32,9 +32,18 @@ export default function HorasExtraPage() {
   const router = useRouter();
   const { data: overtime, loading, error } = useOvertime();
   const { data: employees } = useEmployees();
+  const [updateStates, setUpdateStates] = useState<Record<number, string>>({});
 
   const overtimeRecords = (overtime || []) as OvertimeRecord[];
   const empName = (id: number) => employees.find(e => e.id === id)?.nombreCompleto || `Empleado #${id}`;
+
+  const handleApprove = (id: number) => {
+    setUpdateStates(prev => ({ ...prev, [id]: 'aprobada' }));
+  };
+
+  const handleReject = (id: number) => {
+    setUpdateStates(prev => ({ ...prev, [id]: 'rechazada' }));
+  };
 
   const totalHours = overtimeRecords.reduce((sum, r) => sum + (r.hours || 0), 0);
   const pendingCount = overtimeRecords.filter(r => r.status === 'pendiente').length;
@@ -45,8 +54,12 @@ export default function HorasExtraPage() {
     return sum + (r.hours * hourlyRate);
   }, 0);
 
-  const pendingOvertimes = overtimeRecords.filter(r => r.status === 'pendiente');
-  const approvedOvertimes = overtimeRecords.filter(r => r.status !== 'pendiente');
+  const pendingOvertimes = overtimeRecords.filter(r => updateStates[r.id] ? false : r.status === 'pendiente');
+  const approvedOvertimes = overtimeRecords.filter(r => {
+    const newState = updateStates[r.id];
+    if (newState) return true;
+    return r.status !== 'pendiente';
+  });
 
   const fmt = (n: number) => '$' + n.toLocaleString('es-CL');
 
@@ -139,13 +152,19 @@ export default function HorasExtraPage() {
                       <td className="px-3 py-3 text-gray-600 font-medium">{ot.hours}h</td>
                       <td className="px-3 py-3 text-gray-600">{ot.overtime_type}</td>
                       <td className="px-3 py-3">
-                        <StatusBadge estado={ot.status} />
+                        <StatusBadge estado={updateStates[ot.id] || ot.status} />
                       </td>
                       <td className="px-3 py-3 text-right space-x-2">
-                        <button className="px-3 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition">
+                        <button
+                          onClick={() => handleApprove(ot.id)}
+                          className="px-3 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition"
+                        >
                           Aprobar
                         </button>
-                        <button className="px-3 py-1 text-xs font-semibold rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition">
+                        <button
+                          onClick={() => handleReject(ot.id)}
+                          className="px-3 py-1 text-xs font-semibold rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition"
+                        >
                           Rechazar
                         </button>
                       </td>
@@ -182,7 +201,7 @@ export default function HorasExtraPage() {
                       <td className="px-3 py-3 text-gray-600 font-medium">{ot.hours}h</td>
                       <td className="px-3 py-3 text-gray-600">{ot.overtime_type}</td>
                       <td className="px-3 py-3">
-                        <StatusBadge estado={ot.status} />
+                        <StatusBadge estado={updateStates[ot.id] || ot.status} />
                       </td>
                     </tr>
                   ))}

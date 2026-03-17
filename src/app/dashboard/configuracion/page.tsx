@@ -1,6 +1,19 @@
 'use client';
 
+import { useState } from 'react';
+
 export default function ConfiguracionPage() {
+  const [notifications, setNotifications] = useState({
+    vencimiento: true,
+    vacaciones: true,
+    liquidaciones: false,
+    cumplimiento: true,
+  });
+
+  const toggleNotification = (key: keyof typeof notifications) => {
+    setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <div className="space-y-5">
       <h1 className="text-xl font-bold text-gray-900">Configuración</h1>
@@ -69,19 +82,42 @@ export default function ConfiguracionPage() {
             </div>
           </div>
           <div className="space-y-3 text-sm">
-            {[
-              { label: 'Vencimiento de contratos', checked: true },
-              { label: 'Solicitudes de vacaciones', checked: true },
-              { label: 'Liquidaciones listas', checked: false },
-              { label: 'Alertas de cumplimiento', checked: true },
-            ].map((n, i) => (
-              <label key={i} className="flex items-center justify-between cursor-pointer">
-                <span className="text-gray-600">{n.label}</span>
-                <div className={`w-9 h-5 rounded-full transition-colors ${n.checked ? 'bg-[#F0197A]' : 'bg-gray-200'} relative`}>
-                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${n.checked ? 'left-[18px]' : 'left-0.5'}`} />
-                </div>
-              </label>
-            ))}
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="text-gray-600">Vencimiento de contratos</span>
+              <button
+                onClick={() => toggleNotification('vencimiento')}
+                className={`w-9 h-5 rounded-full transition-colors ${notifications.vencimiento ? 'bg-[#F0197A]' : 'bg-gray-200'} relative`}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${notifications.vencimiento ? 'left-[18px]' : 'left-0.5'}`} />
+              </button>
+            </label>
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="text-gray-600">Solicitudes de vacaciones</span>
+              <button
+                onClick={() => toggleNotification('vacaciones')}
+                className={`w-9 h-5 rounded-full transition-colors ${notifications.vacaciones ? 'bg-[#F0197A]' : 'bg-gray-200'} relative`}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${notifications.vacaciones ? 'left-[18px]' : 'left-0.5'}`} />
+              </button>
+            </label>
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="text-gray-600">Liquidaciones listas</span>
+              <button
+                onClick={() => toggleNotification('liquidaciones')}
+                className={`w-9 h-5 rounded-full transition-colors ${notifications.liquidaciones ? 'bg-[#F0197A]' : 'bg-gray-200'} relative`}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${notifications.liquidaciones ? 'left-[18px]' : 'left-0.5'}`} />
+              </button>
+            </label>
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="text-gray-600">Alertas de cumplimiento</span>
+              <button
+                onClick={() => toggleNotification('cumplimiento')}
+                className={`w-9 h-5 rounded-full transition-colors ${notifications.cumplimiento ? 'bg-[#F0197A]' : 'bg-gray-200'} relative`}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${notifications.cumplimiento ? 'left-[18px]' : 'left-0.5'}`} />
+              </button>
+            </label>
           </div>
         </div>
 

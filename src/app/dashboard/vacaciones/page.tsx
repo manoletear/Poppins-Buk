@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useAbsences, useEmployees } from '@/hooks/useBuk';
 
 function StatusBadge({ estado }: { estado: string }) {
@@ -18,11 +19,24 @@ function StatusBadge({ estado }: { estado: string }) {
 export default function VacacionesPage() {
   const { data: absences, loading, error } = useAbsences();
   const { data: employees } = useEmployees();
+  const [updateStates, setUpdateStates] = useState<Record<number, string>>({});
 
   const empName = (id: number) => employees.find(e => e.id === id)?.nombreCompleto || `Empleado #${id}`;
 
-  const pendientes = absences.filter(a => a.estado === 'pendiente');
-  const resueltas = absences.filter(a => a.estado !== 'pendiente');
+  const handleApprove = (id: number) => {
+    setUpdateStates(prev => ({ ...prev, [id]: 'aprobada' }));
+  };
+
+  const handleReject = (id: number) => {
+    setUpdateStates(prev => ({ ...prev, [id]: 'rechazada' }));
+  };
+
+  const pendientes = absences.filter(a => updateStates[a.id] ? false : a.estado === 'pendiente');
+  const resueltas = absences.filter(a => {
+    const newState = updateStates[a.id];
+    if (newState) return true;
+    return a.estado !== 'pendiente';
+  });
 
   return (
     <div className="space-y-5">
@@ -55,12 +69,18 @@ export default function VacacionesPage() {
                       </td>
                       <td className="px-3 py-3 text-gray-600">{abs.inicio} → {abs.fin}</td>
                       <td className="px-3 py-3 text-gray-600">{abs.dias} días</td>
-                      <td className="px-3 py-3"><StatusBadge estado={abs.estado} /></td>
+                      <td className="px-3 py-3"><StatusBadge estado={updateStates[abs.id] || abs.estado} /></td>
                       <td className="px-3 py-3 text-right space-x-2">
-                        <button className="px-3 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition">
+                        <button
+                          onClick={() => handleApprove(abs.id)}
+                          className="px-3 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition"
+                        >
                           Aprobar
                         </button>
-                        <button className="px-3 py-1 text-xs font-semibold rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition">
+                        <button
+                          onClick={() => handleReject(abs.id)}
+                          className="px-3 py-1 text-xs font-semibold rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition"
+                        >
                           Rechazar
                         </button>
                       </td>
@@ -96,7 +116,7 @@ export default function VacacionesPage() {
                       <td className="px-3 py-2.5 text-gray-600">{abs.tipo}</td>
                       <td className="px-3 py-2.5 text-gray-600">{abs.inicio} → {abs.fin}</td>
                       <td className="px-3 py-2.5 text-gray-600">{abs.dias}</td>
-                      <td className="px-3 py-2.5"><StatusBadge estado={abs.estado} /></td>
+                      <td className="px-3 py-2.5"><StatusBadge estado={updateStates[abs.id] || abs.estado} /></td>
                     </tr>
                   ))}
                 </tbody>
