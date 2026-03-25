@@ -45,3 +45,6 @@
 
 ### Transferencia de archivos
 26. [Como enviar archivos via SFTP](./26-Envio-SFTP.md)
+
+### Integraciones de Movilidad y Logistica
+27. [Integraciones Uber API - Skills y Capacidades](./Integraciones-Uber-API.md)
