@@ -1,18 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useOvertime, useEmployees } from '@/hooks/useBuk';
 import { Clock } from 'lucide-react';
 
-interface OvertimeRecord {
-  id: number;
-  employee_id: number;
-  date: string;
-  hours: number;
-  overtime_type: '50%' | '100%';
-  status: 'pendiente' | 'aprobada' | 'rechazada';
-  observations?: string;
+interface OvertimeV1 {
+  id: string;
+  employee_id: string;
+  fecha: string;
+  horas: number;
+  tipo: '50%' | '100%' | 'otro';
+  monto: number | null;
+  estado: 'pendiente' | 'aprobada' | 'rechazada' | 'cancelada';
+  observaciones: string | null;
+  employee: { id: string; nombre: string; apellido: string } | null;
 }
 
 function StatusBadge({ estado }: { estado: string }) {
@@ -20,6 +21,7 @@ function StatusBadge({ estado }: { estado: string }) {
     pendiente: 'bg-yellow-100 text-yellow-700',
     aprobada: 'bg-emerald-100 text-emerald-700',
     rechazada: 'bg-red-100 text-red-600',
+    cancelada: 'bg-gray-100 text-gray-500',
   };
   return (
     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${colors[estado] || 'bg-gray-100 text-gray-500'}`}>
@@ -28,40 +30,76 @@ function StatusBadge({ estado }: { estado: string }) {
   );
 }
 
+function formatDate(isoDate: string): string {
+  return new Date(isoDate + 'T00:00').toLocaleDateString('es-CL');
+}
+
+function empName(ot: OvertimeV1): string {
+  if (ot.employee) {
+    return `${ot.employee.nombre} ${ot.employee.apellido}`;
+  }
+  return `Empleado ${ot.employee_id.slice(0, 8)}`;
+}
+
+function fmt(n: number): string {
+  return '$' + n.toLocaleString('es-CL');
+}
+
 export default function HorasExtraPage() {
   const router = useRouter();
-  const { data: overtime, loading, error } = useOvertime();
-  const { data: employees } = useEmployees();
-  const [updateStates, setUpdateStates] = useState<Record<number, string>>({});
+  const [overtime, setOvertime] = useState<OvertimeV1[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const overtimeRecords = (overtime || []) as OvertimeRecord[];
-  const empName = (id: number) => employees.find(e => e.id === id)?.nombreCompleto || `Empleado #${id}`;
+  const fetchOvertime = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/overtime');
+      if (!res.ok) throw new Error('Error al cargar horas extra');
+      const json = await res.json();
+      setOvertime(json.data ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+  }, []);
 
-  const handleApprove = (id: number) => {
-    setUpdateStates(prev => ({ ...prev, [id]: 'aprobada' }));
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    fetchOvertime().finally(() => setLoading(false));
+  }, [fetchOvertime]);
+
+  const handleApprove = async (id: string) => {
+    await fetch(`/api/v1/overtime/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado: 'aprobada' }),
+    });
+    fetchOvertime();
   };
 
-  const handleReject = (id: number) => {
-    setUpdateStates(prev => ({ ...prev, [id]: 'rechazada' }));
+  const handleReject = async (id: string) => {
+    await fetch(`/api/v1/overtime/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado: 'rechazada' }),
+    });
+    fetchOvertime();
   };
 
-  const totalHours = overtimeRecords.reduce((sum, r) => sum + (r.hours || 0), 0);
-  const pendingCount = overtimeRecords.filter(r => r.status === 'pendiente').length;
+  // Summary stats
+  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const monthOvertime = overtime.filter(ot => ot.fecha.startsWith(currentMonth));
+  const totalHorasMes = monthOvertime.reduce((sum, ot) => sum + (ot.horas || 0), 0);
+  const pendingCount = overtime.filter(ot => ot.estado === 'pendiente').length;
 
-  // Estimate cost (mock calculation: assume $15,000 per hour for 50%, $20,000 for 100%)
-  const estimatedCost = overtimeRecords.reduce((sum, r) => {
-    const hourlyRate = r.overtime_type === '100%' ? 20000 : 15000;
-    return sum + (r.hours * hourlyRate);
+  const estimatedCost = overtime.reduce((sum, ot) => {
+    if (ot.monto != null) return sum + ot.monto;
+    const hourlyRate = ot.tipo === '100%' ? 20000 : 15000;
+    return sum + (ot.horas * hourlyRate);
   }, 0);
 
-  const pendingOvertimes = overtimeRecords.filter(r => updateStates[r.id] ? false : r.status === 'pendiente');
-  const approvedOvertimes = overtimeRecords.filter(r => {
-    const newState = updateStates[r.id];
-    if (newState) return true;
-    return r.status !== 'pendiente';
-  });
-
-  const fmt = (n: number) => '$' + n.toLocaleString('es-CL');
+  const pendingOvertimes = overtime.filter(ot => ot.estado === 'pendiente');
+  const resolvedOvertimes = overtime.filter(ot => ot.estado !== 'pendiente');
 
   return (
     <div className="space-y-5">
@@ -83,7 +121,7 @@ export default function HorasExtraPage() {
           <div className="flex items-start justify-between">
             <div>
               <div className="text-gray-500 text-sm font-medium">Total Horas Mes</div>
-              <div className="text-3xl font-bold text-gray-900 mt-1">{totalHours}h</div>
+              <div className="text-3xl font-bold text-gray-900 mt-1">{totalHorasMes}h</div>
             </div>
             <div className="p-2.5 bg-[#F0197A]/10 rounded-lg">
               <Clock size={20} className="text-[#F0197A]" />
@@ -118,7 +156,7 @@ export default function HorasExtraPage() {
 
       {loading ? (
         <div className="text-sm text-gray-400">Cargando horas extra...</div>
-      ) : overtimeRecords.length === 0 ? (
+      ) : overtime.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
           <div className="text-4xl mb-2">📋</div>
           <p className="text-gray-600">Sin registros de horas extra</p>
@@ -147,12 +185,12 @@ export default function HorasExtraPage() {
                 <tbody>
                   {pendingOvertimes.map(ot => (
                     <tr key={ot.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                      <td className="px-5 py-3 font-medium text-gray-800">{empName(ot.employee_id)}</td>
-                      <td className="px-3 py-3 text-gray-600">{ot.date}</td>
-                      <td className="px-3 py-3 text-gray-600 font-medium">{ot.hours}h</td>
-                      <td className="px-3 py-3 text-gray-600">{ot.overtime_type}</td>
+                      <td className="px-5 py-3 font-medium text-gray-800">{empName(ot)}</td>
+                      <td className="px-3 py-3 text-gray-600">{formatDate(ot.fecha)}</td>
+                      <td className="px-3 py-3 text-gray-600 font-medium">{ot.horas}h</td>
+                      <td className="px-3 py-3 text-gray-600">{ot.tipo}</td>
                       <td className="px-3 py-3">
-                        <StatusBadge estado={updateStates[ot.id] || ot.status} />
+                        <StatusBadge estado={ot.estado} />
                       </td>
                       <td className="px-3 py-3 text-right space-x-2">
                         <button
@@ -175,12 +213,12 @@ export default function HorasExtraPage() {
             </div>
           )}
 
-          {/* Resolved */}
+          {/* History */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-5 py-3 border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-800">Historial</span>
             </div>
-            {approvedOvertimes.length === 0 ? (
+            {resolvedOvertimes.length === 0 ? (
               <div className="p-5 text-sm text-gray-400">Sin registros</div>
             ) : (
               <table className="w-full text-sm">
@@ -194,14 +232,14 @@ export default function HorasExtraPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {approvedOvertimes.map(ot => (
+                  {resolvedOvertimes.map(ot => (
                     <tr key={ot.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                      <td className="px-5 py-3 font-medium text-gray-800">{empName(ot.employee_id)}</td>
-                      <td className="px-3 py-3 text-gray-600">{ot.date}</td>
-                      <td className="px-3 py-3 text-gray-600 font-medium">{ot.hours}h</td>
-                      <td className="px-3 py-3 text-gray-600">{ot.overtime_type}</td>
+                      <td className="px-5 py-3 font-medium text-gray-800">{empName(ot)}</td>
+                      <td className="px-3 py-3 text-gray-600">{formatDate(ot.fecha)}</td>
+                      <td className="px-3 py-3 text-gray-600 font-medium">{ot.horas}h</td>
+                      <td className="px-3 py-3 text-gray-600">{ot.tipo}</td>
                       <td className="px-3 py-3">
-                        <StatusBadge estado={updateStates[ot.id] || ot.status} />
+                        <StatusBadge estado={ot.estado} />
                       </td>
                     </tr>
                   ))}

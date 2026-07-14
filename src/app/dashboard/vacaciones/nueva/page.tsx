@@ -3,11 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useEmployees } from '@/hooks/useBuk';
 import { ArrowLeft } from 'lucide-react';
 
+interface EmployeeV1 {
+  id: string;
+  nombre: string;
+  apellido: string;
+}
+
 interface VacationFormData {
-  employee_id: number | '';
+  employee_id: string | '';
   start_date: string;
   end_date: string;
   vacation_type: 'Legal' | 'Progresivas' | 'Adicionales';
@@ -30,7 +35,8 @@ function calculateDays(startDate: string, endDate: string): number {
 
 export default function NuevaVacacionPage() {
   const router = useRouter();
-  const { data: employees, loading: empLoading } = useEmployees();
+  const [employees, setEmployees] = useState<EmployeeV1[]>([]);
+  const [empLoading, setEmpLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -42,6 +48,14 @@ export default function NuevaVacacionPage() {
     vacation_type: 'Legal',
     observations: '',
   });
+
+  useEffect(() => {
+    fetch('/api/v1/employees')
+      .then(r => r.json())
+      .then(json => setEmployees(json.data ?? []))
+      .catch(() => {})
+      .finally(() => setEmpLoading(false));
+  }, []);
 
   const days = calculateDays(formData.start_date, formData.end_date);
 
@@ -66,13 +80,7 @@ export default function NuevaVacacionPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-
-    if (name === 'employee_id') {
-      setFormData(prev => ({ ...prev, [name]: value ? parseInt(value) : '' }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -89,14 +97,14 @@ export default function NuevaVacacionPage() {
     try {
       const payload = {
         employee_id: formData.employee_id,
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        vacation_type: formData.vacation_type,
-        observations: formData.observations,
-        days,
+        tipo: formData.vacation_type,
+        fecha_inicio: formData.start_date,
+        fecha_fin: formData.end_date,
+        dias: days,
+        observaciones: formData.observations || null,
       };
 
-      const response = await fetch('/api/buk/vacations', {
+      const response = await fetch('/api/v1/absences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -152,7 +160,7 @@ export default function NuevaVacacionPage() {
                 <option value="">Seleccionar colaboradora...</option>
                 {employees.map(emp => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.nombreCompleto}
+                    {emp.nombre} {emp.apellido}
                   </option>
                 ))}
               </select>

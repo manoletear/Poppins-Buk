@@ -1,14 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useEmployees } from '@/hooks/useBuk';
 import { ArrowLeft } from 'lucide-react';
+
+interface EmployeeV1 {
+  id: string;
+  nombre: string;
+  apellido: string;
+}
 
 export default function NuevaHoraExtraPage() {
   const router = useRouter();
-  const { data: employees } = useEmployees();
+  const [employees, setEmployees] = useState<EmployeeV1[]>([]);
+  const [empLoading, setEmpLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     empleadoId: '',
@@ -17,6 +23,14 @@ export default function NuevaHoraExtraPage() {
     tipo: '50%',
     motivo: '',
   });
+
+  useEffect(() => {
+    fetch('/api/v1/employees')
+      .then(r => r.json())
+      .then(json => setEmployees(json.data ?? []))
+      .catch(() => {})
+      .finally(() => setEmpLoading(false));
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -33,26 +47,26 @@ export default function NuevaHoraExtraPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/buk/overtime', {
+      const payload = {
+        employee_id: formData.empleadoId,
+        fecha: formData.fecha,
+        horas: parseFloat(formData.horas),
+        tipo: formData.tipo as '50%' | '100%',
+        observaciones: formData.motivo || null,
+      };
+
+      const response = await fetch('/api/v1/overtime', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          employee_id: parseInt(formData.empleadoId),
-          date: formData.fecha,
-          hours: parseFloat(formData.horas),
-          overtime_type: formData.tipo,
-          observations: formData.motivo,
-          status: 'pendiente',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         alert('Horas extra registradas exitosamente');
         router.push('/dashboard/horas-extra');
       } else {
-        alert('Error al registrar horas extra');
+        const data = await response.json();
+        alert(data.error || 'Error al registrar horas extra');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -81,19 +95,23 @@ export default function NuevaHoraExtraPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Colaboradora <span className="text-red-500">*</span>
             </label>
-            <select
-              name="empleadoId"
-              value={formData.empleadoId}
-              onChange={handleChange}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F0197A] focus:border-transparent"
-            >
-              <option value="">Selecciona una colaboradora</option>
-              {employees.map(emp => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.nombreCompleto}
-                </option>
-              ))}
-            </select>
+            {empLoading ? (
+              <div className="text-sm text-gray-400">Cargando colaboradoras...</div>
+            ) : (
+              <select
+                name="empleadoId"
+                value={formData.empleadoId}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F0197A] focus:border-transparent"
+              >
+                <option value="">Selecciona una colaboradora</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.nombre} {emp.apellido}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Fecha */}

@@ -2,28 +2,34 @@
 
 import { useState, useEffect } from 'react';
 
-interface Liquidacion {
-  id: number;
-  empleadoId: number;
+interface PayrollV1 {
+  id: string;
+  employee_id: string;
   periodo: string;
-  sueldoBase: number;
-  sueldoBruto: number;
-  horasExtra: number;
-  bonos: number;
+  sueldo_base: number;
   gratificacion: number;
-  descSalud: number;
-  descAfp: number;
-  descCesantia: number;
-  impuestoUnico: number;
-  totalHaberes: number;
-  totalDescuentos: number;
-  liquido: number;
-  estado: string;
-}
-
-interface Empleado {
-  id: number;
-  nombreCompleto: string;
+  horas_extra: number;
+  monto_horas_extra: number;
+  bonos: number;
+  colacion: number;
+  movilizacion: number;
+  otros_haberes: number;
+  total_haberes: number;
+  desc_afp: number;
+  desc_salud: number;
+  desc_cesantia: number;
+  impuesto_unico: number;
+  otros_descuentos: number;
+  total_descuentos: number;
+  sueldo_liquido: number;
+  estado: 'borrador' | 'calculado' | 'aprobado' | 'pagado';
+  fecha_pago: string | null;
+  employee: {
+    id: string;
+    nombre: string;
+    apellido: string;
+    rut: string;
+  } | null;
 }
 
 function safe(n: unknown): number {
@@ -36,46 +42,84 @@ function fmt(n: unknown): string {
   return '$' + safe(n).toLocaleString('es-CL');
 }
 
-function LiquidacionDetail({ liq, empName, onClose }: { liq: Liquidacion; empName: string; onClose: () => void }) {
+function formatPeriodo(periodo: string): string {
+  try {
+    return new Date(periodo + '-01').toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+  } catch {
+    return periodo;
+  }
+}
+
+function estadoLabel(estado: string): string {
+  const labels: Record<string, string> = {
+    borrador: 'Borrador',
+    calculado: 'Calculado',
+    aprobado: 'Aprobado',
+    pagado: 'Pagado',
+  };
+  return labels[estado] ?? estado;
+}
+
+function estadoClass(estado: string): string {
+  switch (estado) {
+    case 'pagado': return 'bg-emerald-100 text-emerald-700';
+    case 'aprobado': return 'bg-green-100 text-green-700';
+    case 'calculado': return 'bg-blue-100 text-blue-700';
+    case 'borrador': return 'bg-gray-100 text-gray-600';
+    default: return 'bg-yellow-100 text-yellow-700';
+  }
+}
+
+function empFullName(liq: PayrollV1): string {
+  if (liq.employee) {
+    return `${liq.employee.nombre} ${liq.employee.apellido}`.trim();
+  }
+  return `Empleado #${liq.employee_id}`;
+}
+
+function LiquidacionDetail({ liq, onClose }: { liq: PayrollV1; onClose: () => void }) {
+  const name = empFullName(liq);
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="bg-gradient-to-r from-[#1B1564] to-[#3730A3] p-5 text-white">
-          <div className="text-lg font-bold">{empName}</div>
-          <div className="text-white/60 text-sm">Liquidación {liq.periodo || '-'}</div>
+          <div className="text-lg font-bold">{name}</div>
+          {liq.employee?.rut && (
+            <div className="text-white/60 text-xs">{liq.employee.rut}</div>
+          )}
+          <div className="text-white/60 text-sm">Liquidación {formatPeriodo(liq.periodo)}</div>
         </div>
         <div className="p-5 space-y-3 text-sm">
           <div className="font-semibold text-gray-700 text-xs uppercase tracking-wide">Haberes</div>
           <div className="space-y-1">
-            <div className="flex justify-between"><span className="text-gray-500">Sueldo Base</span><span className="font-medium">{fmt(liq.sueldoBase)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Horas Extra</span><span className="font-medium">{fmt(liq.horasExtra)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Sueldo Base</span><span className="font-medium">{fmt(liq.sueldo_base)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Horas Extra</span><span className="font-medium">{fmt(liq.monto_horas_extra)}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Bonos</span><span className="font-medium">{fmt(liq.bonos)}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Gratificación</span><span className="font-medium">{fmt(liq.gratificacion)}</span></div>
-            <div className="flex justify-between border-t border-gray-100 pt-1 font-semibold"><span>Total Haberes</span><span>{fmt(liq.totalHaberes)}</span></div>
+            <div className="flex justify-between border-t border-gray-100 pt-1 font-semibold"><span>Total Haberes</span><span>{fmt(liq.total_haberes)}</span></div>
           </div>
 
           <div className="font-semibold text-gray-700 text-xs uppercase tracking-wide mt-3">Descuentos</div>
           <div className="space-y-1">
-            <div className="flex justify-between"><span className="text-gray-500">Salud</span><span className="font-medium text-red-500">-{fmt(liq.descSalud)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">AFP</span><span className="font-medium text-red-500">-{fmt(liq.descAfp)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Cesantía</span><span className="font-medium text-red-500">-{fmt(liq.descCesantia)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">Impuesto Único</span><span className="font-medium text-red-500">-{fmt(liq.impuestoUnico)}</span></div>
-            <div className="flex justify-between border-t border-gray-100 pt-1 font-semibold"><span>Total Descuentos</span><span className="text-red-500">-{fmt(liq.totalDescuentos)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Salud</span><span className="font-medium text-red-500">-{fmt(liq.desc_salud)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">AFP</span><span className="font-medium text-red-500">-{fmt(liq.desc_afp)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Cesantía</span><span className="font-medium text-red-500">-{fmt(liq.desc_cesantia)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Impuesto Único</span><span className="font-medium text-red-500">-{fmt(liq.impuesto_unico)}</span></div>
+            <div className="flex justify-between border-t border-gray-100 pt-1 font-semibold"><span>Total Descuentos</span><span className="text-red-500">-{fmt(liq.total_descuentos)}</span></div>
           </div>
 
           <div className="flex justify-between border-t-2 border-gray-200 pt-2 text-base font-bold">
             <span>Líquido a Pagar</span>
-            <span className="text-emerald-600">{fmt(liq.liquido)}</span>
+            <span className="text-emerald-600">{fmt(liq.sueldo_liquido)}</span>
           </div>
 
           <div className="flex gap-2 mt-2">
-            <a
-              href={`/api/buk/payroll/pdf?employeeId=${liq.empleadoId}&year=${(liq.periodo || '').split('-')[0] || new Date().getFullYear()}&month=${parseInt((liq.periodo || '').split('-')[1] || '1', 10)}`}
-              download
+            <button
+              onClick={() => window.print()}
               className="flex-1 py-2 rounded-lg bg-[#1B1564] text-white text-sm font-medium text-center hover:bg-[#1B1564]/90 transition"
             >
-              Descargar PDF
-            </a>
+              Imprimir PDF
+            </button>
             <button onClick={onClose} className="flex-1 py-2 rounded-lg bg-gray-100 text-sm font-medium text-gray-600 hover:bg-gray-200 transition">
               Cerrar
             </button>
@@ -87,38 +131,28 @@ function LiquidacionDetail({ liq, empName, onClose }: { liq: Liquidacion; empNam
 }
 
 export default function LiquidacionesPage() {
-  const [payroll, setPayroll] = useState<Liquidacion[]>([]);
-  const [employees, setEmployees] = useState<Empleado[]>([]);
+  const [payroll, setPayroll] = useState<PayrollV1[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Liquidacion | null>(null);
+  const [selected, setSelected] = useState<PayrollV1 | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/buk/payroll').then(r => r.json()).catch(() => ({ data: [] })),
-      fetch('/api/buk/employees').then(r => r.json()).catch(() => ({ data: [] })),
-    ]).then(([payRes, empRes]) => {
-      const payData = Array.isArray(payRes?.data) ? payRes.data : [];
-      const empData = Array.isArray(empRes?.data) ? empRes.data : [];
-      setPayroll(payData);
-      setEmployees(empData);
-      setLoading(false);
-    }).catch(err => {
-      setError(err?.message || 'Error desconocido');
-      setLoading(false);
-    });
+    fetch('/api/v1/payroll')
+      .then(r => r.json())
+      .then(res => {
+        setPayroll(Array.isArray(res?.data) ? res.data : []);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err?.message || 'Error desconocido');
+        setLoading(false);
+      });
   }, []);
-
-  const empName = (id: number) => {
-    const emp = employees.find(e => e.id === id);
-    return emp?.nombreCompleto || `Empleado #${id}`;
-  };
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">Liquidaciones</h1>
-        <div className="text-sm text-gray-500">Período: Marzo 2026</div>
       </div>
 
       {error && <div className="text-red-500 text-sm">Error: {error}</div>}
@@ -133,6 +167,7 @@ export default function LiquidacionesPage() {
             <thead>
               <tr className="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 <th className="px-5 py-3">Colaboradora</th>
+                <th className="px-3 py-3">RUT</th>
                 <th className="px-3 py-3">Período</th>
                 <th className="px-3 py-3 text-right">Bruto</th>
                 <th className="px-3 py-3 text-right">Descuentos</th>
@@ -147,16 +182,15 @@ export default function LiquidacionesPage() {
                   className="border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer"
                   onClick={() => setSelected(liq)}
                 >
-                  <td className="px-5 py-3 font-medium text-gray-800">{empName(safe(liq.empleadoId))}</td>
-                  <td className="px-3 py-3 text-gray-600">{liq.periodo || '-'}</td>
-                  <td className="px-3 py-3 text-right font-medium">{fmt(liq.sueldoBruto)}</td>
-                  <td className="px-3 py-3 text-right text-red-500">-{fmt(liq.totalDescuentos)}</td>
-                  <td className="px-3 py-3 text-right font-bold text-emerald-600">{fmt(liq.liquido)}</td>
+                  <td className="px-5 py-3 font-medium text-gray-800">{empFullName(liq)}</td>
+                  <td className="px-3 py-3 text-gray-500 text-xs">{liq.employee?.rut ?? '-'}</td>
+                  <td className="px-3 py-3 text-gray-600">{formatPeriodo(liq.periodo)}</td>
+                  <td className="px-3 py-3 text-right font-medium">{fmt(liq.total_haberes)}</td>
+                  <td className="px-3 py-3 text-right text-red-500">-{fmt(liq.total_descuentos)}</td>
+                  <td className="px-3 py-3 text-right font-bold text-emerald-600">{fmt(liq.sueldo_liquido)}</td>
                   <td className="px-3 py-3">
-                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                      liq.estado === 'pagado' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {liq.estado || 'pendiente'}
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${estadoClass(liq.estado)}`}>
+                      {estadoLabel(liq.estado)}
                     </span>
                   </td>
                 </tr>
@@ -166,8 +200,7 @@ export default function LiquidacionesPage() {
         </div>
       )}
 
-      {selected && <LiquidacionDetail liq={selected} empName={empName(safe(selected.empleadoId))} onClose={() => setSelected(null)} />}
+      {selected && <LiquidacionDetail liq={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
-// deploy trigger 1773718742
