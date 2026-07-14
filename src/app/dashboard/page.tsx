@@ -1,8 +1,46 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Users, DollarSign, Clock, Calendar, UserPlus, LogOut, Clock3 } from 'lucide-react';
-import { useEmployees, usePayroll, useAbsences } from '@/hooks/useBuk';
+
+interface EmployeeV1 {
+  id: string;
+  nombre: string;
+  apellido: string;
+  estado: string;
+  rut: string;
+  job_position?: { nombre: string } | null;
+}
+
+interface PayrollV1 {
+  id: string;
+  total_haberes: number | null;
+  total_descuentos: number | null;
+  sueldo_liquido: number | null;
+  periodo: string;
+}
+
+interface AbsenceV1 {
+  id: string;
+  tipo: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  dias: number;
+  estado: string;
+  employee_id: string;
+}
+
+const COLOR_PALETTE = ['#1B1564', '#F0197A', '#059669', '#7C3AED', '#D97706', '#0284C7', '#DC2626', '#7C2D12'];
+
+function getInitials(nombre: string, apellido: string): string {
+  return (nombre[0] ?? '') + (apellido[0] ?? '');
+}
+
+function getColor(initials: string): string {
+  const code = initials.charCodeAt(0) + (initials.charCodeAt(1) || 0);
+  return COLOR_PALETTE[code % COLOR_PALETTE.length];
+}
 
 interface KpiCardProps {
   label: string;
@@ -39,6 +77,7 @@ function StatusBadge({ estado }: { estado: string }) {
     activo: 'bg-emerald-100 text-emerald-700',
     inactivo: 'bg-gray-100 text-gray-500',
     licencia: 'bg-amber-100 text-amber-700',
+    vacaciones: 'bg-blue-100 text-blue-700',
     pendiente: 'bg-yellow-100 text-yellow-700',
     aprobada: 'bg-emerald-100 text-emerald-700',
     rechazada: 'bg-red-100 text-red-600',
@@ -50,10 +89,10 @@ function StatusBadge({ estado }: { estado: string }) {
   );
 }
 
-function CostDistributionBar({ payroll }: { payroll: any[] }) {
-  const totalHaberes = payroll.reduce((sum, p) => sum + (p.haberes || 0), 0);
-  const totalDescuentos = payroll.reduce((sum, p) => sum + (p.descuentos || 0), 0);
-  const totalLiquido = payroll.reduce((sum, p) => sum + (p.liquido || 0), 0);
+function CostDistributionBar({ payroll }: { payroll: PayrollV1[] }) {
+  const totalHaberes = payroll.reduce((sum, p) => sum + (p.total_haberes ?? 0), 0);
+  const totalDescuentos = payroll.reduce((sum, p) => sum + (p.total_descuentos ?? 0), 0);
+  const totalLiquido = payroll.reduce((sum, p) => sum + (p.sueldo_liquido ?? 0), 0);
 
   const total = totalHaberes + totalDescuentos;
   const pctHaberes = total > 0 ? (totalHaberes / total * 100) : 0;
@@ -94,16 +133,16 @@ function CostDistributionBar({ payroll }: { payroll: any[] }) {
   );
 }
 
-function EmployeeStatusBreakdown({ employees }: { employees: any[] }) {
+function EmployeeStatusBreakdown({ employees }: { employees: EmployeeV1[] }) {
+  const total = employees.length;
   const activos = employees.filter(e => e.estado === 'activo').length;
   const inactivos = employees.filter(e => e.estado === 'inactivo').length;
   const licencia = employees.filter(e => e.estado === 'licencia').length;
-  const total = employees.length;
 
   const statuses = [
-    { label: 'Activos', count: activos, color: 'bg-emerald-500', textColor: 'text-emerald-600' },
-    { label: 'Inactivos', count: inactivos, color: 'bg-gray-400', textColor: 'text-gray-600' },
-    { label: 'En Licencia', count: licencia, color: 'bg-amber-500', textColor: 'text-amber-600' },
+    { label: 'Activos', count: activos, textColor: 'text-emerald-600' },
+    { label: 'Inactivos', count: inactivos, textColor: 'text-gray-600' },
+    { label: 'En Licencia', count: licencia, textColor: 'text-amber-600' },
   ];
 
   return (
@@ -120,7 +159,7 @@ function EmployeeStatusBreakdown({ employees }: { employees: any[] }) {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="8"
-                strokeDasharray={`${(status.count / total) * 282.7} 282.7`}
+                strokeDasharray={`${total > 0 ? (status.count / total) * 282.7 : 0} 282.7`}
                 className={status.textColor}
               />
             </svg>
@@ -135,7 +174,7 @@ function EmployeeStatusBreakdown({ employees }: { employees: any[] }) {
   );
 }
 
-function QuickActionCard({ href, icon: Icon, label }: { href: string; icon: any; label: string }) {
+function QuickActionCard({ href, icon: Icon, label }: { href: string; icon: React.ElementType; label: string }) {
   return (
     <Link
       href={href}
@@ -150,12 +189,32 @@ function QuickActionCard({ href, icon: Icon, label }: { href: string; icon: any;
 }
 
 export default function DashboardPage() {
-  const { data: employees, loading: loadingEmp } = useEmployees();
-  const { data: payroll, loading: loadingPay } = usePayroll();
-  const { data: absences, loading: loadingAbs } = useAbsences();
+  const [employees, setEmployees] = useState<EmployeeV1[]>([]);
+  const [payroll, setPayroll] = useState<PayrollV1[]>([]);
+  const [absences, setAbsences] = useState<AbsenceV1[]>([]);
+  const [loadingEmp, setLoadingEmp] = useState(true);
+  const [loadingPay, setLoadingPay] = useState(true);
+  const [loadingAbs, setLoadingAbs] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/v1/employees')
+      .then(r => r.json())
+      .then(j => setEmployees(j.data ?? []))
+      .finally(() => setLoadingEmp(false));
+
+    fetch('/api/v1/payroll')
+      .then(r => r.json())
+      .then(j => setPayroll(j.data ?? []))
+      .finally(() => setLoadingPay(false));
+
+    fetch('/api/v1/absences')
+      .then(r => r.json())
+      .then(j => setAbsences(j.data ?? []))
+      .finally(() => setLoadingAbs(false));
+  }, []);
 
   const activos = employees.filter(e => e.estado === 'activo').length;
-  const costoMensual = payroll.reduce((sum, l) => sum + l.liquido, 0);
+  const costoMensual = payroll.reduce((sum, p) => sum + (p.sueldo_liquido ?? 0), 0);
   const solicitudesPendientes = absences.filter(a => a.estado === 'pendiente').length;
 
   const fmt = (n: number) => '$' + n.toLocaleString('es-CL');
@@ -167,6 +226,8 @@ export default function DashboardPage() {
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  const formatDate = (iso: string) => new Date(iso + 'T00:00').toLocaleDateString('es-CL');
 
   return (
     <div className="space-y-6 pb-6">
@@ -201,7 +262,7 @@ export default function DashboardPage() {
           href="/dashboard/horas-extra"
           icon={<Calendar className="w-5 h-5 text-white" />}
           label="Horas Extra"
-          value={loadingAbs ? '...' : '0h'}
+          value="0h"
           sub="Este mes"
           bgColor="bg-[#1B1564]"
         />
@@ -253,24 +314,31 @@ export default function DashboardPage() {
           ) : (
             <table className="w-full text-sm">
               <tbody>
-                {employees.slice(0, 5).map(emp => (
-                  <tr key={emp.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                    <td className="px-5 py-2.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ background: emp.color }}>
-                          {emp.iniciales}
+                {employees.slice(0, 5).map(emp => {
+                  const initials = getInitials(emp.nombre, emp.apellido);
+                  const color = getColor(initials);
+                  return (
+                    <tr key={emp.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                      <td className="px-5 py-2.5">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                            style={{ background: color }}
+                          >
+                            {initials}
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-800">{emp.nombre} {emp.apellido}</div>
+                            <div className="text-xs text-gray-400">{emp.job_position?.nombre ?? '—'}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-medium text-gray-800">{emp.nombreCompleto}</div>
-                          <div className="text-xs text-gray-400">{emp.cargo}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 text-right">
-                      <StatusBadge estado={emp.estado} />
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <StatusBadge estado={emp.estado} />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -293,7 +361,9 @@ export default function DashboardPage() {
                   <tr key={abs.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                     <td className="px-5 py-2.5">
                       <div className="font-medium text-gray-800">{abs.tipo}</div>
-                      <div className="text-xs text-gray-400">{abs.inicio} → {abs.fin} · {abs.dias}d</div>
+                      <div className="text-xs text-gray-400">
+                        {formatDate(abs.fecha_inicio)} → {formatDate(abs.fecha_fin)} · {abs.dias}d
+                      </div>
                     </td>
                     <td className="px-3 py-2.5 text-right">
                       <StatusBadge estado={abs.estado} />

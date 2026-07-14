@@ -15,6 +15,8 @@ const NAV_ITEMS = [
   { id: 'horasextra', label: 'Horas Extra', icon: '⏰', href: '/dashboard/horas-extra' },
   { section: 'Beneficios' },
   { id: 'beneficios', label: 'Beneficios', icon: '🎁', href: '/dashboard/beneficios' },
+  { section: 'Análisis' },
+  { id: 'reportes', label: 'Reportes', icon: '📈', href: '/dashboard/reportes' },
   { section: 'Documentación' },
   { id: 'documentos', label: 'Documentos', icon: '📄', href: '/dashboard/documentos' },
   { section: 'Empresa Agentica' },
@@ -23,8 +25,31 @@ const NAV_ITEMS = [
   { id: 'configuracion', label: 'Configuración', icon: '⚙️', href: '/dashboard/configuracion' },
 ];
 
-export default function Sidebar() {
+const ROLE_LABELS: Record<string, string> = {
+  org_admin: 'Administrador',
+  hr_manager: 'RRHH',
+  employee: 'Empleado',
+  super_admin: 'Super Admin',
+};
+
+interface SidebarProps {
+  fullName?: string;
+  role?: string;
+}
+
+export default function Sidebar({ fullName, role }: SidebarProps) {
   const pathname = usePathname();
+
+  const displayName = fullName || 'Usuario';
+  const initials = displayName
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .map(p => p[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+  const roleLabel = role ? (ROLE_LABELS[role] ?? role) : 'Usuario';
 
   return (
     <nav className="w-[220px] min-w-[220px] bg-[#1B1564] flex flex-col overflow-y-auto h-full">
@@ -77,11 +102,11 @@ export default function Sidebar() {
       <Link href="/dashboard/perfil" className="mt-auto px-4 py-[14px] border-t border-white/[0.07] hover:bg-white/[0.05] transition rounded-lg mx-2 mb-2">
         <div className="flex items-center gap-[9px]">
           <div className="w-8 h-8 rounded-full bg-[#F0197A]/70 flex items-center justify-center text-xs font-bold text-white shrink-0">
-            RA
+            {initials}
           </div>
           <div>
-            <div className="text-xs font-semibold text-white">Rene Aravena</div>
-            <div className="text-[10px] text-white/[0.38]">Administrador</div>
+            <div className="text-xs font-semibold text-white truncate max-w-[130px]">{displayName}</div>
+            <div className="text-[10px] text-white/[0.38]">{roleLabel}</div>
           </div>
         </div>
       </Link>
