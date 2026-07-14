@@ -120,11 +120,34 @@ export default function NuevoColaboradoraPage() {
     setLoading(true);
     setError('');
 
+    const contractTypeMap: Record<string, string> = {
+      Indefinido: 'indefinido',
+      'Plazo Fijo': 'plazo_fijo',
+      'Por Obra': 'obra_faena',
+    };
+
     try {
-      const response = await fetch('/api/buk/employees', {
+      const response = await fetch('/api/v1/employees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          employee: {
+            nombre: formData.first_name,
+            apellido: formData.last_name,
+            rut: formData.rut,
+            email: formData.email || null,
+            telefono: formData.phone || null,
+            fecha_ingreso: formData.hire_date || new Date().toISOString().split('T')[0],
+          },
+          contract: {
+            tipo_contrato: contractTypeMap[formData.contract_type] ?? 'indefinido',
+            sueldo_base: formData.base_salary,
+            fecha_inicio: formData.hire_date || new Date().toISOString().split('T')[0],
+            banco: formData.bank || null,
+            tipo_cuenta_banco: formData.bank_account_type || null,
+            numero_cuenta: formData.bank_account_number || null,
+          },
+        }),
       });
 
       if (!response.ok) {

@@ -3,46 +3,71 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { User, Briefcase, Shield, ArrowLeft, Users, FileText } from 'lucide-react';
-import type { PoppinsEmployee, PoppinsLiquidacion, PoppinsVacacion } from '@/types/buk';
+import type {
+  EmployeeDetailV1,
+  PayrollV1,
+  AbsenceV1,
+  FamilyMemberV1,
+  DocumentV1,
+  VacationBalanceV1,
+} from '@/hooks/useEmployeesV1';
 
-interface FamilyMember {
-  id: number;
-  nombre: string;
-  apellido: string;
-  parentesco: string;
-  rut: string;
-  fechaNacimiento: string;
-  edad: number;
-  esCargaFamiliar: boolean;
-  genero: string;
+const COLOR_PALETTE = ['#1B1564','#F0197A','#059669','#7C3AED','#D97706','#0284C7','#DC2626','#7C2D12'];
+
+function getColor(nombre: string, apellido: string): string {
+  const code = (nombre.charCodeAt(0) || 0) + (apellido.charCodeAt(0) || 0);
+  return COLOR_PALETTE[code % COLOR_PALETTE.length];
 }
 
-interface EmployeeDocument {
-  id: number;
-  tipo: string;
-  nombre: string;
-  fechaCreacion: string;
-  estado: string;
+function getIniciales(nombre: string, apellido: string): string {
+  return `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase();
 }
 
-interface VacationBalance {
-  diasTotales: number;
-  diasUsados: number;
-  diasPendientes: number;
-  diasDisponibles: number;
-  diasProgresivos: number;
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('es-CL');
 }
+
+function calcAge(fechaNacimiento: string | null | undefined): number {
+  if (!fechaNacimiento) return 0;
+  const birth = new Date(fechaNacimiento);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
+const CONTRACT_LABELS: Record<string, string> = {
+  indefinido: 'Indefinido',
+  plazo_fijo: 'Plazo Fijo',
+  obra_faena: 'Por Obra',
+  honorarios: 'Honorarios',
+  part_time: 'Part Time',
+};
+
+const PAYROLL_ESTADO_LABELS: Record<string, string> = {
+  borrador: 'Borrador',
+  calculado: 'Calculado',
+  aprobado: 'Aprobado',
+  pagado: 'Pagado',
+};
 
 function StatusBadge({ estado }: { estado: string }) {
   const colors: Record<string, string> = {
     activo: 'bg-emerald-100 text-emerald-700',
     inactivo: 'bg-gray-100 text-gray-500',
     licencia: 'bg-amber-100 text-amber-700',
+    vacaciones: 'bg-blue-100 text-blue-700',
+    suspendido: 'bg-red-100 text-red-600',
     pendiente: 'bg-yellow-100 text-yellow-700',
     aprobada: 'bg-emerald-100 text-emerald-700',
     rechazada: 'bg-red-100 text-red-600',
+    cancelada: 'bg-gray-100 text-gray-500',
+    Borrador: 'bg-gray-100 text-gray-500',
+    Calculado: 'bg-blue-100 text-blue-700',
+    Aprobado: 'bg-yellow-100 text-yellow-700',
     Pagado: 'bg-emerald-100 text-emerald-700',
-    Pendiente: 'bg-yellow-100 text-yellow-700',
   };
   return (
     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${colors[estado] || 'bg-gray-100 text-gray-500'}`}>
@@ -51,7 +76,25 @@ function StatusBadge({ estado }: { estado: string }) {
   );
 }
 
-function LiquidacionDetail({ liq, empName, onClose }: { liq: PoppinsLiquidacion; empName: string; onClose: () => void }) {
+interface LiqDisplay {
+  id: string;
+  periodo: string;
+  sueldoBase: number;
+  horasExtra: number;
+  bonos: number;
+  gratificacion: number;
+  totalHaberes: number;
+  sueldoBruto: number;
+  descSalud: number;
+  descAfp: number;
+  descCesantia: number;
+  impuestoUnico: number;
+  totalDescuentos: number;
+  liquido: number;
+  estado: string;
+}
+
+function LiquidacionDetail({ liq, empName, onClose }: { liq: LiqDisplay; empName: string; onClose: () => void }) {
   const fmt = (n: number) => '$' + n.toLocaleString('es-CL');
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
@@ -98,15 +141,15 @@ export default function EmployeeDetailPage() {
   const router = useRouter();
   const id = params.id as string;
 
-  const [employee, setEmployee] = useState<PoppinsEmployee | null>(null);
-  const [payroll, setPayroll] = useState<PoppinsLiquidacion[]>([]);
-  const [absences, setAbsences] = useState<PoppinsVacacion[]>([]);
-  const [family, setFamily] = useState<FamilyMember[]>([]);
-  const [documents, setDocuments] = useState<EmployeeDocument[]>([]);
-  const [vacBalance, setVacBalance] = useState<VacationBalance | null>(null);
+  const [employee, setEmployee] = useState<EmployeeDetailV1 | null>(null);
+  const [payroll, setPayroll] = useState<PayrollV1[]>([]);
+  const [absences, setAbsences] = useState<AbsenceV1[]>([]);
+  const [family, setFamily] = useState<FamilyMemberV1[]>([]);
+  const [documents, setDocuments] = useState<DocumentV1[]>([]);
+  const [vacBalance, setVacBalance] = useState<VacationBalanceV1 | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('info');
-  const [selectedPayroll, setSelectedPayroll] = useState<PoppinsLiquidacion | null>(null);
+  const [selectedPayroll, setSelectedPayroll] = useState<LiqDisplay | null>(null);
 
   const fmt = (n: number) => '$' + n.toLocaleString('es-CL');
 
@@ -114,32 +157,32 @@ export default function EmployeeDetailPage() {
     if (!id) return;
 
     Promise.all([
-      fetch(`/api/buk/employees/${id}`)
+      fetch(`/api/v1/employees/${id}`)
         .then(r => r.json())
         .then(json => setEmployee(json.data || null))
         .catch(() => {}),
 
-      fetch(`/api/buk/payroll?employeeId=${id}`)
+      fetch(`/api/v1/employees/${id}/payroll`)
         .then(r => r.json())
         .then(json => setPayroll(json.data || []))
         .catch(() => {}),
 
-      fetch(`/api/buk/absences?employeeId=${id}`)
+      fetch(`/api/v1/employees/${id}/absences`)
         .then(r => r.json())
-        .then(json => setAbsences(json.data || []))
+        .then(json => setAbsences(Array.isArray(json.data) ? json.data : []))
         .catch(() => {}),
 
-      fetch(`/api/buk/family?employeeId=${id}`)
+      fetch(`/api/v1/employees/${id}/family`)
         .then(r => r.json())
         .then(json => setFamily(Array.isArray(json.data) ? json.data : []))
         .catch(() => {}),
 
-      fetch(`/api/buk/documents?employeeId=${id}`)
+      fetch(`/api/v1/employees/${id}/documents`)
         .then(r => r.json())
         .then(json => setDocuments(Array.isArray(json.data) ? json.data : []))
         .catch(() => {}),
 
-      fetch(`/api/buk/vacation-balance?employeeId=${id}`)
+      fetch(`/api/v1/employees/${id}/vacation-balance`)
         .then(r => r.json())
         .then(json => setVacBalance(json.data || null))
         .catch(() => {}),
@@ -162,6 +205,37 @@ export default function EmployeeDetailPage() {
     );
   }
 
+  const nombreCompleto = `${employee.nombre} ${employee.apellido}`;
+  const cargo = employee.job_position?.nombre ?? '—';
+  const iniciales = getIniciales(employee.nombre, employee.apellido);
+  const color = getColor(employee.nombre, employee.apellido);
+  const fechaIngreso = formatDate(employee.fecha_ingreso);
+  const tipoContrato = CONTRACT_LABELS[employee.contract?.tipo_contrato ?? ''] ?? '—';
+  const sueldoBase = employee.contract?.sueldo_base ?? 0;
+  const afp = employee.contract?.afp_nombre ?? '—';
+  const salud = employee.contract?.salud_tipo === 'isapre'
+    ? (employee.contract?.salud_nombre ?? 'Isapre')
+    : 'Fonasa';
+
+  // Map payroll rows for display
+  const payrollDisplay: LiqDisplay[] = payroll.map(liq => ({
+    id: liq.id,
+    periodo: liq.periodo,
+    sueldoBase: liq.sueldo_base,
+    horasExtra: liq.monto_horas_extra,
+    bonos: liq.bonos,
+    gratificacion: liq.gratificacion,
+    totalHaberes: liq.total_haberes,
+    sueldoBruto: liq.total_haberes,
+    descSalud: liq.desc_salud,
+    descAfp: liq.desc_afp,
+    descCesantia: liq.desc_cesantia,
+    impuestoUnico: liq.impuesto_unico,
+    totalDescuentos: liq.total_descuentos,
+    liquido: liq.sueldo_liquido,
+    estado: PAYROLL_ESTADO_LABELS[liq.estado] ?? liq.estado,
+  }));
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -175,12 +249,12 @@ export default function EmployeeDetailPage() {
         </button>
 
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold" style={{ background: employee.color }}>
-            {employee.iniciales}
+          <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold" style={{ background: color }}>
+            {iniciales}
           </div>
           <div>
-            <div className="text-2xl font-bold">{employee.nombreCompleto}</div>
-            <div className="text-white/60">{employee.cargo}</div>
+            <div className="text-2xl font-bold">{nombreCompleto}</div>
+            <div className="text-white/60">{cargo}</div>
             <div className="mt-2">
               <StatusBadge estado={employee.estado} />
             </div>
@@ -253,19 +327,19 @@ export default function EmployeeDetailPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="text-xs text-gray-500 font-semibold uppercase mb-1">Cargo</div>
-                    <div className="text-sm font-medium text-gray-900">{employee.cargo}</div>
+                    <div className="text-sm font-medium text-gray-900">{cargo}</div>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="text-xs text-gray-500 font-semibold uppercase mb-1">Contrato</div>
-                    <div className="text-sm font-medium text-gray-900">{employee.tipoContrato}</div>
+                    <div className="text-sm font-medium text-gray-900">{tipoContrato}</div>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="text-xs text-gray-500 font-semibold uppercase mb-1">Fecha de Ingreso</div>
-                    <div className="text-sm font-medium text-gray-900">{employee.fechaIngreso}</div>
+                    <div className="text-sm font-medium text-gray-900">{fechaIngreso}</div>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="text-xs text-gray-500 font-semibold uppercase mb-1">Sueldo Base</div>
-                    <div className="text-sm font-bold text-emerald-600">{fmt(employee.sueldoBase)}</div>
+                    <div className="text-sm font-bold text-emerald-600">{fmt(sueldoBase)}</div>
                   </div>
                 </div>
               </div>
@@ -279,11 +353,11 @@ export default function EmployeeDetailPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="text-xs text-gray-500 font-semibold uppercase mb-1">AFP</div>
-                    <div className="text-sm font-medium text-gray-900">{employee.afp || '—'}</div>
+                    <div className="text-sm font-medium text-gray-900">{afp}</div>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="text-xs text-gray-500 font-semibold uppercase mb-1">Salud</div>
-                    <div className="text-sm font-medium text-gray-900">{employee.salud || '—'}</div>
+                    <div className="text-sm font-medium text-gray-900">{salud}</div>
                   </div>
                 </div>
               </div>
@@ -293,7 +367,7 @@ export default function EmployeeDetailPage() {
           {/* Liquidaciones Tab */}
           {activeTab === 'payroll' && (
             <div>
-              {payroll.length === 0 ? (
+              {payrollDisplay.length === 0 ? (
                 <div className="text-center py-8 text-gray-400">Sin liquidaciones</div>
               ) : (
                 <div className="overflow-x-auto">
@@ -308,7 +382,7 @@ export default function EmployeeDetailPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {payroll.map(liq => (
+                      {payrollDisplay.map(liq => (
                         <tr
                           key={liq.id}
                           className="border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition"
@@ -339,25 +413,25 @@ export default function EmployeeDetailPage() {
                   <div className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-3">Saldo de Vacaciones</div>
                   <div className="grid grid-cols-4 gap-3">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-emerald-600">{vacBalance.diasDisponibles}</div>
+                      <div className="text-2xl font-bold text-emerald-600">{vacBalance.dias_disponibles}</div>
                       <div className="text-[10px] text-gray-500">Disponibles</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-gray-700">{vacBalance.diasTotales}</div>
+                      <div className="text-2xl font-bold text-gray-700">{vacBalance.dias_legales_totales}</div>
                       <div className="text-[10px] text-gray-500">Totales</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">{vacBalance.diasUsados}</div>
+                      <div className="text-2xl font-bold text-blue-600">{vacBalance.dias_usados}</div>
                       <div className="text-[10px] text-gray-500">Usados</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-yellow-600">{vacBalance.diasPendientes}</div>
+                      <div className="text-2xl font-bold text-yellow-600">{vacBalance.dias_pendientes}</div>
                       <div className="text-[10px] text-gray-500">Pendientes</div>
                     </div>
                   </div>
-                  {vacBalance.diasProgresivos > 0 && (
+                  {vacBalance.dias_progresivos > 0 && (
                     <div className="mt-2 text-xs text-emerald-600 text-center">
-                      +{vacBalance.diasProgresivos} días progresivos
+                      +{vacBalance.dias_progresivos} días progresivos
                     </div>
                   )}
                 </div>
@@ -387,9 +461,9 @@ export default function EmployeeDetailPage() {
                       {absences.map(abs => (
                         <tr key={abs.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition">
                           <td className="px-4 py-3 font-medium">{abs.tipo}</td>
-                          <td className="px-4 py-3">{abs.inicio}</td>
-                          <td className="px-4 py-3">{abs.fin}</td>
-                          <td className="px-4 py-3 font-medium">{abs.dias}</td>
+                          <td className="px-4 py-3">{formatDate(abs.fecha_inicio)}</td>
+                          <td className="px-4 py-3">{formatDate(abs.fecha_fin)}</td>
+                          <td className="px-4 py-3 font-medium">{abs.dias ?? '—'}</td>
                           <td className="px-4 py-3">
                             <StatusBadge estado={abs.estado} />
                           </td>
@@ -416,7 +490,7 @@ export default function EmployeeDetailPage() {
                 <>
                   <div className="bg-blue-50 rounded-lg p-3 mb-4 border border-blue-100">
                     <div className="text-xs text-blue-700 font-medium">
-                      {family.filter(m => m.esCargaFamiliar).length} cargas familiares reconocidas
+                      {family.filter(m => m.es_carga_familiar).length} cargas familiares reconocidas
                     </div>
                   </div>
 
@@ -430,15 +504,15 @@ export default function EmployeeDetailPage() {
                             </div>
                             <div className="text-xs text-gray-500 mt-0.5">{member.parentesco}</div>
                           </div>
-                          {member.esCargaFamiliar && (
+                          {member.es_carga_familiar && (
                             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
                               Carga familiar
                             </span>
                           )}
                         </div>
                         <div className="mt-3 space-y-1 text-xs text-gray-500">
-                          <div>RUT: {member.rut}</div>
-                          <div>Nacimiento: {member.fechaNacimiento} ({member.edad} años)</div>
+                          <div>RUT: {member.rut ?? '—'}</div>
+                          <div>Nacimiento: {formatDate(member.fecha_nacimiento)} ({calcAge(member.fecha_nacimiento)} años)</div>
                         </div>
                       </div>
                     ))}
@@ -460,27 +534,28 @@ export default function EmployeeDetailPage() {
                 <div className="text-center py-8 text-gray-400">Sin documentos registrados</div>
               ) : (
                 <div className="space-y-2">
-                  {documents.map(doc => (
-                    <div key={doc.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3 border border-gray-100 hover:bg-gray-100/80 transition">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-[#1B1564]/10 flex items-center justify-center">
-                          <FileText size={16} className="text-[#1B1564]" />
+                  {documents.map(doc => {
+                    const docEstado = doc.firmado ? 'firmado' : 'emitido';
+                    return (
+                      <div key={doc.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3 border border-gray-100 hover:bg-gray-100/80 transition">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-[#1B1564]/10 flex items-center justify-center">
+                            <FileText size={16} className="text-[#1B1564]" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-800">{doc.nombre}</div>
+                            <div className="text-xs text-gray-400">{doc.tipo} &middot; {formatDate(doc.created_at)}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-800">{doc.nombre}</div>
-                          <div className="text-xs text-gray-400">{doc.tipo} &middot; {doc.fechaCreacion}</div>
-                        </div>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          docEstado === 'firmado' ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {docEstado}
+                        </span>
                       </div>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                        doc.estado === 'firmado' ? 'bg-emerald-100 text-emerald-700'
-                        : doc.estado === 'pendiente_firma' ? 'bg-yellow-100 text-yellow-700'
-                        : doc.estado === 'emitido' ? 'bg-blue-100 text-blue-700'
-                        : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        {doc.estado === 'pendiente_firma' ? 'Pendiente firma' : doc.estado}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -491,7 +566,7 @@ export default function EmployeeDetailPage() {
       {selectedPayroll && (
         <LiquidacionDetail
           liq={selectedPayroll}
-          empName={employee.nombreCompleto}
+          empName={nombreCompleto}
           onClose={() => setSelectedPayroll(null)}
         />
       )}
