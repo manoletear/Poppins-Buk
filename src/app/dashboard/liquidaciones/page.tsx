@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface PayrollV1 {
   id: string;
@@ -130,13 +130,147 @@ function LiquidacionDetail({ liq, onClose }: { liq: PayrollV1; onClose: () => vo
   );
 }
 
+function getCurrentPeriodo(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+interface GenerarModalProps {
+  onClose: () => void;
+  onSuccess: (msg: string) => void;
+}
+
+function GenerarNominaModal({ onClose, onSuccess }: GenerarModalProps) {
+  const [periodo, setPeriodo] = useState(getCurrentPeriodo());
+  const [bonos, setBonos] = useState('');
+  const [colacion, setColacion] = useState('');
+  const [movilizacion, setMovilizacion] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  const handleGenerar = async () => {
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const res = await fetch('/api/v1/payroll/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          periodo,
+          bonos_global: bonos ? Number(bonos) : 0,
+          colacion_global: colacion ? Number(colacion) : 0,
+          movilizacion_global: movilizacion ? Number(movilizacion) : 0,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setGenError(json.error ?? 'Error al generar nómina');
+        return;
+      }
+      const d = json.data;
+      onSuccess(`Nómina generada para ${d.created} empleada${d.created !== 1 ? 's' : ''}${d.skipped > 0 ? ` (${d.skipped} sin contrato omitida${d.skipped !== 1 ? 's' : ''})` : ''}`);
+      onClose();
+    } catch (err) {
+      setGenError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+      onClick={e => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+        <div className="bg-gradient-to-r from-[#1B1564] to-[#3730A3] p-5 text-white">
+          <div className="text-lg font-bold">Generar Nómina</div>
+          <div className="text-white/60 text-sm">Calcular y guardar liquidaciones del período</div>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Período <span className="text-red-500">*</span></label>
+            <input
+              type="month"
+              value={periodo}
+              onChange={e => setPeriodo(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B1564]/20 focus:border-[#1B1564] transition"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Bonos adicionales (opcional)</label>
+            <input
+              type="number"
+              min="0"
+              placeholder="$0"
+              value={bonos}
+              onChange={e => setBonos(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B1564]/20 focus:border-[#1B1564] transition"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Colación (opcional)</label>
+            <input
+              type="number"
+              min="0"
+              placeholder="$0"
+              value={colacion}
+              onChange={e => setColacion(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B1564]/20 focus:border-[#1B1564] transition"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Movilización (opcional)</label>
+            <input
+              type="number"
+              min="0"
+              placeholder="$0"
+              value={movilizacion}
+              onChange={e => setMovilizacion(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B1564]/20 focus:border-[#1B1564] transition"
+            />
+          </div>
+
+          {genError && (
+            <div className="text-red-500 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {genError}
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={handleGenerar}
+              disabled={!periodo || generating}
+              className="flex-1 py-2.5 rounded-lg bg-[#1B1564] text-white text-sm font-semibold hover:bg-[#1B1564]/90 transition disabled:opacity-50"
+            >
+              {generating ? 'Calculando nómina...' : 'Calcular y Guardar'}
+            </button>
+            <button
+              onClick={onClose}
+              disabled={generating}
+              className="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-medium text-gray-600 hover:bg-gray-200 transition disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LiquidacionesPage() {
   const [payroll, setPayroll] = useState<PayrollV1[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<PayrollV1 | null>(null);
+  const [showGenerar, setShowGenerar] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchPayroll = () => {
+    setLoading(true);
     fetch('/api/v1/payroll')
       .then(r => r.json())
       .then(res => {
@@ -147,13 +281,35 @@ export default function LiquidacionesPage() {
         setError(err?.message || 'Error desconocido');
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchPayroll();
   }, []);
+
+  const handleGenerarSuccess = (msg: string) => {
+    setSuccessMsg(msg);
+    fetchPayroll();
+    setTimeout(() => setSuccessMsg(null), 5000);
+  };
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">Liquidaciones</h1>
+        <button
+          onClick={() => setShowGenerar(true)}
+          className="px-4 py-2 rounded-lg bg-[#1B1564] text-white text-sm font-semibold hover:bg-[#1B1564]/90 transition"
+        >
+          Generar Nómina
+        </button>
       </div>
+
+      {successMsg && (
+        <div className="text-emerald-700 text-sm bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2.5">
+          {successMsg}
+        </div>
+      )}
 
       {error && <div className="text-red-500 text-sm">Error: {error}</div>}
 
@@ -201,6 +357,12 @@ export default function LiquidacionesPage() {
       )}
 
       {selected && <LiquidacionDetail liq={selected} onClose={() => setSelected(null)} />}
+      {showGenerar && (
+        <GenerarNominaModal
+          onClose={() => setShowGenerar(false)}
+          onSuccess={handleGenerarSuccess}
+        />
+      )}
     </div>
   );
 }

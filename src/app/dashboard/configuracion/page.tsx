@@ -21,12 +21,39 @@ interface UserProfile {
   role: string;
 }
 
+interface TeamUser {
+  id: string;
+  role: string;
+  full_name: string;
+  email: string;
+  active: boolean;
+  created_at: string;
+}
+
 const ROLE_LABELS: Record<string, string> = {
+  super_admin: 'Super Admin',
   org_admin: 'Administrador',
   hr_manager: 'RRHH',
-  employee: 'Empleado',
-  super_admin: 'Super Admin',
+  employee: 'Empleada',
 };
+
+function roleBadgeClass(role: string): string {
+  switch (role) {
+    case 'super_admin':
+    case 'org_admin': return 'bg-purple-100 text-purple-700';
+    case 'hr_manager': return 'bg-blue-100 text-blue-700';
+    default: return 'bg-gray-100 text-gray-600';
+  }
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .slice(0, 2)
+    .map(w => w[0] ?? '')
+    .join('')
+    .toUpperCase();
+}
 
 function Toggle({ value, onChange }: { value: boolean; onChange: () => void }) {
   return (
@@ -49,12 +76,33 @@ export default function ConfiguracionPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
+  // Team management state
+  const [teamUsers, setTeamUsers] = useState<TeamUser[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('hr_manager');
+  const [inviteName, setInviteName] = useState('');
+  const [inviting, setInviting] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
   const [notifications, setNotifications] = useState({
     vencimiento: true,
     vacaciones: true,
     liquidaciones: false,
     cumplimiento: true,
   });
+
+  const fetchTeam = () => {
+    setTeamLoading(true);
+    fetch('/api/v1/users')
+      .then(r => r.json())
+      .then(json => {
+        if (Array.isArray(json.data)) setTeamUsers(json.data);
+      })
+      .finally(() => setTeamLoading(false));
+  };
 
   useEffect(() => {
     Promise.all([
@@ -64,6 +112,8 @@ export default function ConfiguracionPage() {
       if (orgJson.data) setOrg(orgJson.data);
       if (userJson.data) setUser(userJson.data);
     }).finally(() => setLoading(false));
+
+    fetchTeam();
   }, []);
 
   const startEdit = () => {
@@ -112,12 +162,44 @@ export default function ConfiguracionPage() {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const handleInvite = async () => {
+    setInviting(true);
+    setInviteError(null);
+    setInviteMsg(null);
+    try {
+      const res = await fetch('/api/v1/users/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: inviteEmail,
+          role: inviteRole,
+          full_name: inviteName || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setInviteError(json.error ?? 'Error al enviar invitación');
+        return;
+      }
+      setInviteMsg(json.message ?? 'Invitación enviada');
+      setInviteEmail('');
+      setInviteName('');
+      setInviteRole('hr_manager');
+      setShowInviteModal(false);
+      fetchTeam();
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setInviting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-5">
         <h1 className="text-xl font-bold text-gray-900">Configuración</h1>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {[1, 2, 3, 4].map(i => (
+          {[1, 2, 3, 4, 5].map(i => (
             <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 h-40 animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
               <div className="h-3 bg-gray-100 rounded w-full mb-2" />
@@ -275,7 +357,135 @@ export default function ConfiguracionPage() {
           </div>
         </div>
 
-        {/* Card 4 — Mi Cuenta */}
+        {/* Card 4 — Equipo y Accesos */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4 lg:col-span-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">👥</span>
+              <div>
+                <div className="font-semibold text-gray-800">Equipo y Accesos</div>
+                <div className="text-xs text-gray-400">Usuarios con acceso a la plataforma</div>
+              </div>
+            </div>
+            <button
+              onClick={() => { setShowInviteModal(true); setInviteError(null); setInviteMsg(null); }}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#F0197A] text-white hover:bg-[#d4166c] transition"
+            >
+              Invitar Usuario
+            </button>
+          </div>
+
+          {inviteMsg && (
+            <div className="text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+              {inviteMsg}
+            </div>
+          )}
+
+          {teamLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-10 bg-gray-100 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : teamUsers.length === 0 ? (
+            <div className="text-sm text-gray-400">No hay usuarios en esta organización.</div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {teamUsers.map(u => (
+                <div key={u.id} className="flex items-center gap-3 py-2.5">
+                  <div className="w-8 h-8 rounded-full bg-[#1B1564]/10 text-[#1B1564] flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {getInitials(u.full_name || u.email)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-800 truncate">{u.full_name || '—'}</div>
+                    <div className="text-xs text-gray-400 truncate">{u.email}</div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${roleBadgeClass(u.role)}`}>
+                      {ROLE_LABELS[u.role] ?? u.role}
+                    </span>
+                    <span title={u.active ? 'Activo' : 'Inactivo'}>
+                      <span className={`inline-block w-2 h-2 rounded-full ${u.active ? 'bg-emerald-400' : 'bg-gray-300'}`} />
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Invite Modal */}
+          {showInviteModal && (
+            <div
+              className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+              onClick={e => { if (e.currentTarget === e.target) setShowInviteModal(false); }}
+            >
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="bg-gradient-to-r from-[#F0197A] to-[#d4166c] p-5 text-white">
+                  <div className="text-lg font-bold">Invitar Usuario</div>
+                  <div className="text-white/70 text-sm">Enviar acceso a un nuevo miembro del equipo</div>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Email <span className="text-red-500">*</span></label>
+                    <input
+                      type="email"
+                      placeholder="usuario@empresa.com"
+                      value={inviteEmail}
+                      onChange={e => setInviteEmail(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F0197A]/20 focus:border-[#F0197A] transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Rol <span className="text-red-500">*</span></label>
+                    <select
+                      value={inviteRole}
+                      onChange={e => setInviteRole(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F0197A]/20 focus:border-[#F0197A] transition bg-white"
+                    >
+                      <option value="hr_manager">Gestión RRHH</option>
+                      <option value="employee">Empleada</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Nombre (opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="Nombre completo"
+                      value={inviteName}
+                      onChange={e => setInviteName(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F0197A]/20 focus:border-[#F0197A] transition"
+                    />
+                  </div>
+
+                  {inviteError && (
+                    <div className="text-red-500 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                      {inviteError}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={handleInvite}
+                      disabled={!inviteEmail || inviting}
+                      className="flex-1 py-2.5 rounded-lg bg-[#F0197A] text-white text-sm font-semibold hover:bg-[#d4166c] transition disabled:opacity-50"
+                    >
+                      {inviting ? 'Enviando...' : 'Enviar Invitación'}
+                    </button>
+                    <button
+                      onClick={() => setShowInviteModal(false)}
+                      disabled={inviting}
+                      className="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-medium text-gray-600 hover:bg-gray-200 transition disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Card 5 — Mi Cuenta */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
           <div className="flex items-center gap-3">
             <span className="text-xl">👤</span>
