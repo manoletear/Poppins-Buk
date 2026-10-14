@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poppins — Operaciones &amp; Capital</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');</style>
+<style>
+:root {
+  --navy: #1B1564;
+  --pink: #F0197A;
+  --bg: #F8F7FC;
+  --card: #FFFFFF;
+  --fg: #0F0E2A;
+  --fg2: #5A5880;
+  --border: #E4E2F0;
+  --green: #059669;
+  --amber: #D97706;
+  --blue: #1D4ED8;
+  --red: #DC2626;
+  --purple: #7C3AED;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D0C1E; --card: #16152D; --fg: #F0EFFB; --fg2: #9896BE;
+    --border: #2A2847; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D0C1E; --card: #16152D; --fg: #F0EFFB; --fg2: #9896BE;
+  --border: #2A2847;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--fg); min-height: 100dvh; }
+
+/* ── HEADER ─────────────────────────────────────────── */
+header {
+  background: var(--navy);
+  padding: 20px 24px 16px;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-logo {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--pink); display: grid; place-items: center;
+  font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -1px;
+}
+.brand-name { font-size: 20px; font-weight: 700; color: #fff; }
+.brand-sub { font-size: 12px; color: rgba(255,255,255,.55); margin-top: 1px; }
+.doc-badges { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-ancla { background: rgba(29,78,216,.25); color: #93C5FD; }
+.badge-supuesto { background: rgba(220,38,38,.25); color: #FCA5A5; }
+.badge-formula { background: rgba(255,255,255,.12); color: rgba(255,255,255,.7); }
+
+/* ── LEGEND ─────────────────────────────────────────── */
+.legend-bar {
+  display: flex; gap: 16px; padding: 8px 24px; background: rgba(27,21,100,.06);
+  border-bottom: 1px solid var(--border); font-size: 11px; flex-wrap: wrap;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; color: var(--fg2); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-a { background: var(--blue); }
+.dot-s { background: var(--red); }
+.dot-f { background: var(--fg); }
+
+/* ── TABS ────────────────────────────────────────────── */
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); background: var(--card); overflow-x: auto; }
+.tab {
+  padding: 12px 20px; font-size: 13px; font-weight: 600; color: var(--fg2);
+  cursor: pointer; border: none; background: none; white-space: nowrap;
+  border-bottom: 3px solid transparent; transition: all .15s;
+}
+.tab:hover { color: var(--navy); }
+.tab.active { color: var(--navy); border-bottom-color: var(--pink); }
+.panel { display: none; padding: 24px; max-width: 960px; margin: 0 auto; }
+.panel.active { display: block; }
+
+/* ── CARDS ───────────────────────────────────────────── */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px;
+}
+.card + .card, .card + .section { margin-top: 16px; }
+.section { margin-top: 24px; }
+.section-title { font-size: 14px; font-weight: 700; color: var(--fg2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+.card-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.card-sub { font-size: 12px; color: var(--fg2); }
+
+/* ── KPI GRID ────────────────────────────────────────── */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 14px; }
+.kpi-label { font-size: 11px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: .05em; }
+.kpi-value { font-size: 22px; font-weight: 800; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.kpi-note { font-size: 11px; color: var(--fg2); }
+.ancla { color: var(--blue); }
+.supuesto { color: var(--red); }
+.formula { color: var(--fg); }
+.green { color: var(--green); }
+.pink { color: var(--pink); }
+
+/* ── TABLE ───────────────────────────────────────────── */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 10px 12px; background: var(--bg); font-size: 11px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.pill-blue { background: #EFF6FF; color: var(--blue); }
+.pill-green { background: #ECFDF5; color: var(--green); }
+.pill-amber { background: #FFFBEB; color: var(--amber); }
+.pill-red { background: #FEF2F2; color: var(--red); }
+.pill-purple { background: #F5F3FF; color: var(--purple); }
+.pill-gray { background: var(--bg); color: var(--fg2); }
+@media (prefers-color-scheme: dark) {
+  .pill-blue { background: rgba(29,78,216,.2); color: #93C5FD; }
+  .pill-green { background: rgba(5,150,105,.2); color: #6EE7B7; }
+  .pill-amber { background: rgba(217,119,6,.2); color: #FCD34D; }
+  .pill-red { background: rgba(220,38,38,.2); color: #FCA5A5; }
+  .pill-purple { background: rgba(124,58,237,.2); color: #C4B5FD; }
+  .pill-gray { background: var(--border); color: var(--fg2); }
+}
+
+/* ── PROGRESS BAR ────────────────────────────────────── */
+.bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.bar-label { font-size: 12px; width: 160px; flex-shrink: 0; font-weight: 500; }
+.bar-track { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width .5s; }
+.bar-val { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; width: 90px; text-align: right; flex-shrink: 0; }
+
+/* ── TIMELINE ────────────────────────────────────────── */
+.timeline { display: flex; flex-direction: column; gap: 0; }
+.tl-item { display: flex; gap: 16px; padding-bottom: 20px; position: relative; }
+.tl-item::before {
+  content: ''; position: absolute; left: 15px; top: 32px; bottom: 0;
+  width: 2px; background: var(--border);
+}
+.tl-item:last-child::before { display: none; }
+.tl-dot {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center; font-size: 13px; font-weight: 700;
+  position: relative; z-index: 1;
+}
+.tl-content { flex: 1; padding-top: 4px; }
+.tl-title { font-size: 14px; font-weight: 700; }
+.tl-desc { font-size: 12px; color: var(--fg2); margin-top: 3px; line-height: 1.5; }
+
+/* ── 2-COL ───────────────────────────────────────────── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+/* ── INFO ROW ────────────────────────────────────────── */
+.info-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.info-row:last-child { border-bottom: none; }
+.info-key { color: var(--fg2); font-weight: 500; }
+.info-val { font-weight: 600; text-align: right; max-width: 55%; }
+
+/* ── HIGHLIGHT BOX ───────────────────────────────────── */
+.highlight {
+  border-radius: 10px; padding: 16px 18px; margin-top: 16px;
+  border-left: 4px solid;
+}
+.highlight-navy { background: rgba(27,21,100,.06); border-color: var(--navy); }
+.highlight-pink { background: rgba(240,25,122,.06); border-color: var(--pink); }
+.highlight-green { background: rgba(5,150,105,.06); border-color: var(--green); }
+.highlight-amber { background: rgba(217,119,6,.06); border-color: var(--amber); }
+.h-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--fg2); margin-bottom: 6px; }
+.h-value { font-size: 24px; font-weight: 800; }
+.h-sub { font-size: 12px; color: var(--fg2); margin-top: 3px; }
+
+/* ── STACKED BAR ─────────────────────────────────────── */
+.stack-bar { display: flex; border-radius: 8px; overflow: hidden; height: 28px; margin: 12px 0; }
+.stack-seg { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; transition: flex .5s; }
+
+/* ── SCENARIO TOGGLE ─────────────────────────────────── */
+.sc-toggle { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 4px; gap: 4px; width: fit-content; margin-bottom: 20px; }
+.sc-btn { padding: 6px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: none; color: var(--fg2); transition: all .15s; }
+.sc-btn.active { background: var(--card); color: var(--navy); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+
+/* ── FOOTER ──────────────────────────────────────────── */
+footer { text-align: center; padding: 24px; font-size: 11px; color: var(--fg2); border-top: 1px solid var(--border); margin-top: 32px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-logo">P</div>
+    <div>
+      <div class="brand-name">Poppins</div>
+      <div class="brand-sub">Estructura Operativa · Costo de Construcción · Plan de Capital</div>
+    </div>
+  </div>
+  <div class="doc-badges">
+    <span class="badge badge-ancla">A = Ancla (dato real)</span>
+    <span class="badge badge-supuesto">S = Supuesto (estimación)</span>
+    <span class="badge badge-formula">F = Fórmula (calculado)</span>
+  </div>
+</header>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="equipo">01 · Equipo &amp; Bots</button>
+  <button class="tab" data-tab="costo">02 · Costo de Construcción</button>
+  <button class="tab" data-tab="capital">03 · Plan de Capital</button>
+  <button class="tab" data-tab="safe">04 · Instrumentos SAFE</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- TAB 1: EQUIPO & BOTS                               -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="panel active" id="tab-equipo">
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Headcount humano</div><div class="kpi-value formula">2.5 FTE</div><div class="kpi-note">founders + 0.5 dev</div></div>
+    <div class="kpi"><div class="kpi-label">Bots / IA activos</div><div class="kpi-value formula">6</div><div class="kpi-note">agentes autónomos</div></div>
+    <div class="kpi"><div class="kpi-label">Costo bots/mes</div><div class="kpi-value supuesto">~$580 USD</div><div class="kpi-note">≈ $591K CLP/mes</div></div>
+    <div class="kpi"><div class="kpi-label">Reemplaza</div><div class="kpi-value green">4+ FTE</div><div class="kpi-note">en soporte/ventas/mktg</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Founders (equity, salario diferido en ronda)</div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Sebastián Ureta — CEO</div>
+        <div class="card-sub" style="margin-bottom:12px">50% equity · 100% dedicación</div>
+        <div class="info-row"><span class="info-key">Rol</span><span class="info-val">CEO · Comercial · Fundraising</span></div>
+        <div class="info-row"><span class="info-key">Foco</span><span class="info-val">Ventas, partnerships BUK, ángeles</span></div>
+        <div class="info-row"><span class="info-key">Salario objetivo</span><span class="info-val supuesto">$2.0M CLP/mes</span></div>
+        <div class="info-row"><span class="info-key">Status actual</span><span class="info-val"><span class="pill pill-amber">Sin goce (deferred)</span></span></div>
+        <div class="info-row"><span class="info-key">Deuda acumulada (6m)</span><span class="info-val formula">$12M CLP</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Tooxs — CTO</div>
+        <div class="card-sub" style="margin-bottom:12px">50% equity · 50% dedicación</div>
+        <div class="info-row"><span class="info-key">Rol</span><span class="info-val">CTO · Producto · Arquitectura</span></div>
+        <div class="info-row"><span class="info-key">Foco</span><span class="info-val">Desarrollo, AI/bots, plataforma</span></div>
+        <div class="info-row"><span class="info-key">Salario objetivo</span><span class="info-val supuesto">$1.5M CLP/mes</span></div>
+        <div class="info-row"><span class="info-key">Status actual</span><span class="info-val"><span class="pill pill-amber">Sin goce (deferred)</span></span></div>
+        <div class="info-row"><span class="info-key">Deuda acumulada (6m)</span><span class="info-val formula">$9M CLP</span></div>
+      </div>
+    </div>
+    <div class="highlight highlight-amber" style="margin-top:12px">
+      <div class="h-title">Salario diferido total founders (6 meses)</div>
+      <div class="h-value formula">$21M CLP</div>
+      <div class="h-sub">Recuperable desde la ronda como "deferred salary" — no dilutivo, es una deuda de la newCo</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Stack de IA / Bots operacionales</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Bot / Herramienta</th>
+            <th>Función</th>
+            <th>Plataforma</th>
+            <th>Costo/mes</th>
+            <th>FTE reemplazado</th>
+            <th>Saving mensual</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Bot de soporte L1</strong></td>
+            <td>Responde tickets, onboarding FAQs, errores comunes (80% tickets)</td>
+            <td><span class="pill pill-blue">Intercom + GPT-4o</span></td>
+            <td class="supuesto">$150 USD</td>
+            <td>1.0 FTE soporte</td>
+            <td class="green">$1.2M CLP</td>
+          </tr>
+          <tr>
+            <td><strong>Bot SDR / Outbound</strong></td>
+            <td>Prospección emails personalizados, follow-up secuencias</td>
+            <td><span class="pill pill-purple">Clay + Apollo + GPT</span></td>
+            <td class="supuesto">$200 USD</td>
+            <td>1.5 FTE SDR</td>
+            <td class="green">$1.8M CLP</td>
+          </tr>
+          <tr>
+            <td><strong>Dev Assistant</strong></td>
+            <td>Generación de código, PR reviews, debugging (vibe coding)</td>
+            <td><span class="pill pill-blue">Cursor Business</span></td>
+            <td class="supuesto">$40 USD</td>
+            <td>0.7 FTE dev</td>
+            <td class="green">$840K CLP</td>
+          </tr>
+          <tr>
+            <td><strong>Bot de marketing</strong></td>
+            <td>Copy social, blog posts, templates email marketing</td>
+            <td><span class="pill pill-gray">Claude API + n8n</span></td>
+            <td class="supuesto">$80 USD</td>
+            <td>0.5 FTE copywriter</td>
+            <td class="green">$600K CLP</td>
+          </tr>
+          <tr>
+            <td><strong>Analytics Bot</strong></td>
+            <td>Weekly metrics, alertas churn, dashboard auto-generados</td>
+            <td><span class="pill pill-green">PostHog + Zapier</span></td>
+            <td class="supuesto">$50 USD</td>
+            <td>0.3 FTE analista</td>
+            <td class="green">$360K CLP</td>
+          </tr>
+          <tr>
+            <td><strong>Bot legal/docs</strong></td>
+            <td>Genera contratos laborales, liquidaciones, resúmenes legales</td>
+            <td><span class="pill pill-amber">Claude API custom</span></td>
+            <td class="supuesto">$60 USD</td>
+            <td>0.2 FTE legal</td>
+            <td class="green">$240K CLP</td>
+          </tr>
+          <tr style="background: rgba(5,150,105,.04);">
+            <td colspan="2"><strong>TOTAL BOTS</strong></td>
+            <td></td>
+            <td class="formula"><strong>~$580 USD/mes</strong><br><small>≈ $591K CLP</small></td>
+            <td class="formula"><strong>4.2 FTE equiv.</strong></td>
+            <td class="formula green"><strong>$5.04M CLP/mes</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="highlight highlight-green">
+      <div class="h-title">ROI de bots (mensual)</div>
+      <div class="h-value formula">8.5x</div>
+      <div class="h-sub">$591K CLP inversión en bots → $5.04M CLP en salarios que no se contratan. Break-even: inmediato.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Infraestructura SaaS (no-bots)</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Servicio</th><th>Uso</th><th>Plan</th><th>Costo/mes</th></tr></thead>
+        <tbody>
+          <tr><td>Supabase</td><td>Base de datos + Auth + Storage</td><td><span class="pill pill-blue">Pro</span></td><td class="ancla">$25 USD</td></tr>
+          <tr><td>Vercel</td><td>Hosting frontend + API routes</td><td><span class="pill pill-blue">Pro</span></td><td class="ancla">$20 USD</td></tr>
+          <tr><td>Resend</td><td>Emails transaccionales</td><td><span class="pill pill-green">Free→Pro</span></td><td class="ancla">$0→20 USD</td></tr>
+          <tr><td>Brevo</td><td>Email marketing + secuencias</td><td><span class="pill pill-amber">Starter</span></td><td class="supuesto">$25 USD</td></tr>
+          <tr><td>Sentry</td><td>Error monitoring</td><td><span class="pill pill-green">Free</span></td><td class="ancla">$0 USD</td></tr>
+          <tr><td>GitHub</td><td>Repositorio + CI/CD</td><td><span class="pill pill-green">Team</span></td><td class="ancla">$4 USD</td></tr>
+          <tr><td>Dominio + SSL</td><td>poppins.cl</td><td>—</td><td class="ancla">$3 USD</td></tr>
+          <tr style="background: rgba(27,21,100,.04)"><td colspan="3"><strong>TOTAL INFRA SaaS</strong></td><td class="formula"><strong>~$97 USD/mes</strong><br><small>≈ $99K CLP</small></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Costo operativo mensual total (post-ronda)</div>
+    <div class="card">
+      <div class="bar-row"><div class="bar-label">Sebastián (CEO)</div><div class="bar-track"><div class="bar-fill" style="width:40%;background:var(--navy)"></div></div><div class="bar-val supuesto">$1.5M CLP</div></div>
+      <div class="bar-row"><div class="bar-label">Tooxs (CTO, 50%)</div><div class="bar-track"><div class="bar-fill" style="width:24%;background:var(--navy)"></div></div><div class="bar-val supuesto">$900K CLP</div></div>
+      <div class="bar-row"><div class="bar-label">Dev part-time (0.5)</div><div class="bar-track"><div class="bar-fill" style="width:19%;background:#6366F1"></div></div><div class="bar-val supuesto">$700K CLP</div></div>
+      <div class="bar-row"><div class="bar-label">Bots + IA</div><div class="bar-track"><div class="bar-fill" style="width:16%;background:var(--pink)"></div></div><div class="bar-val formula">$591K CLP</div></div>
+      <div class="bar-row"><div class="bar-label">Infra SaaS</div><div class="bar-track"><div class="bar-fill" style="width:3%;background:var(--green)"></div></div><div class="bar-val formula">$99K CLP</div></div>
+      <div style="border-top:2px solid var(--border);margin-top:8px;padding-top:12px;display:flex;justify-content:space-between;font-weight:700;font-size:15px">
+        <span>Total burn mensual base (sin marketing)</span>
+        <span class="formula">~$3.79M CLP/mes</span>
+      </div>
+      <div style="font-size:12px;color:var(--fg2);margin-top:4px;text-align:right">Con marketing $500K/mes → $4.29M CLP/mes total · $51.5M CLP/año</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- TAB 2: COSTO DE CONSTRUCCIÓN                       -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="panel" id="tab-costo">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">UF octubre 2026</div><div class="kpi-value supuesto">$39,500</div><div class="kpi-note">CLP/UF (estimado)</div></div>
+    <div class="kpi"><div class="kpi-label">Tarifa usada</div><div class="kpi-value ancla">1.2 UF/h</div><div class="kpi-note">= $47,400 CLP/h</div></div>
+    <div class="kpi"><div class="kpi-label">Duración proyecto</div><div class="kpi-value ancla">6 meses</div><div class="kpi-note">mes 1–6</div></div>
+    <div class="kpi"><div class="kpi-label">Reducción vibe coding</div><div class="kpi-value supuesto">65%</div><div class="kpi-note">vs. equipo tradicional</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Valor mercado sin Vibe Coding (equipo tradicional equivalente)</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Rol</th><th>FTE</th><th>Meses</th><th>Horas</th><th>Tarifa UF/h</th><th>Total UF</th><th>Total CLP</th></tr></thead>
+        <tbody>
+          <tr><td>Tech Lead / Arquitecto</td><td class="ancla">1.0</td><td>6</td><td>1,056</td><td class="supuesto">1.8 UF</td><td class="formula">1,901 UF</td><td class="formula">$75.1M</td></tr>
+          <tr><td>Senior Full Stack Dev</td><td class="ancla">1.0</td><td>6</td><td>1,056</td><td class="supuesto">1.4 UF</td><td class="formula">1,478 UF</td><td class="formula">$58.4M</td></tr>
+          <tr><td>Senior Frontend / UX Dev</td><td class="ancla">1.0</td><td>6</td><td>1,056</td><td class="supuesto">1.2 UF</td><td class="formula">1,267 UF</td><td class="formula">$50.0M</td></tr>
+          <tr><td>Backend / DevOps</td><td class="ancla">0.5</td><td>6</td><td>528</td><td class="supuesto">1.2 UF</td><td class="formula">634 UF</td><td class="formula">$25.0M</td></tr>
+          <tr><td>Diseñador UX/UI</td><td class="ancla">0.5</td><td>6</td><td>528</td><td class="supuesto">1.0 UF</td><td class="formula">528 UF</td><td class="formula">$20.9M</td></tr>
+          <tr><td>Product Manager</td><td class="ancla">0.5</td><td>6</td><td>528</td><td class="supuesto">1.2 UF</td><td class="formula">634 UF</td><td class="formula">$25.0M</td></tr>
+          <tr><td>QA Engineer</td><td class="ancla">0.5</td><td>6</td><td>528</td><td class="supuesto">0.9 UF</td><td class="formula">475 UF</td><td class="formula">$18.8M</td></tr>
+          <tr style="background:rgba(27,21,100,.04)"><td colspan="4"><strong>TOTAL SIN VIBE CODING</strong></td><td></td><td class="formula"><strong>6,917 UF</strong></td><td class="formula"><strong>$273.2M CLP</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card" style="margin-top:12px;border-color:var(--navy)">
+      <div style="font-size:12px;color:var(--fg2)">Horas mensuales: 176h · 4.5 FTE equivalentes promedio · 6 meses</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Ajuste Vibe Coding (reducción efectiva de tiempo)</div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">¿Qué reduce el Vibe Coding?</div>
+        <div style="margin-top:12px">
+          <div class="bar-row"><div class="bar-label">Scaffolding / boilerplate</div><div class="bar-track"><div class="bar-fill" style="width:85%;background:var(--green)"></div></div><div class="bar-val">85% menos</div></div>
+          <div class="bar-row"><div class="bar-label">CRUD / API routes</div><div class="bar-track"><div class="bar-fill" style="width:75%;background:var(--green)"></div></div><div class="bar-val">75% menos</div></div>
+          <div class="bar-row"><div class="bar-label">UI components</div><div class="bar-track"><div class="bar-fill" style="width:70%;background:var(--amber)"></div></div><div class="bar-val">70% menos</div></div>
+          <div class="bar-row"><div class="bar-label">Tests unitarios</div><div class="bar-track"><div class="bar-fill" style="width:60%;background:var(--amber)"></div></div><div class="bar-val">60% menos</div></div>
+          <div class="bar-row"><div class="bar-label">Arquitectura / diseño</div><div class="bar-track"><div class="bar-fill" style="width:20%;background:var(--red)"></div></div><div class="bar-val">20% menos</div></div>
+          <div class="bar-row"><div class="bar-label">DevOps / infra</div><div class="bar-track"><div class="bar-fill" style="width:40%;background:var(--amber)"></div></div><div class="bar-val">40% menos</div></div>
+        </div>
+        <div style="font-size:12px;color:var(--fg2);margin-top:8px">Promedio ponderado: <strong class="formula">65% reducción</strong></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Resumen de valor</div>
+        <div class="info-row"><span class="info-key">Valor mercado tradicional</span><span class="info-val formula">$273.2M CLP</span></div>
+        <div class="info-row"><span class="info-key">Factor Vibe (35% del costo)</span><span class="info-val supuesto">× 0.35</span></div>
+        <div class="info-row"><span class="info-key">Costo real del desarrollo</span><span class="info-val formula">$95.6M CLP</span></div>
+        <div style="border-top:2px solid var(--border);margin-top:8px;padding-top:10px"></div>
+        <div class="info-row"><span class="info-key">Horas Tooxs (50% × 6m)</span><span class="info-val ancla">528 h</span></div>
+        <div class="info-row"><span class="info-key">Horas Sebastián (gestión/prod)</span><span class="info-val supuesto">422 h</span></div>
+        <div class="info-row"><span class="info-key">Salario diferido (1.2 UF/h)</span><span class="info-val formula">1,140 UF = $45M CLP</span></div>
+        <div class="info-row"><span class="info-key">Overhead tools/licencias</span><span class="info-val supuesto">$3M CLP</span></div>
+        <div class="info-row"><span class="info-key"><strong>Inversión founders total</strong></span><span class="info-val formula"><strong>~$48M CLP</strong></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Tabla de argumentación para el inversionista</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Métrica</th><th>Valor</th><th>Tipo</th><th>Argumento</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Valor mercado del producto construido</td>
+            <td><strong>$273M CLP</strong></td>
+            <td><span class="pill pill-blue">F</span></td>
+            <td>Esto es lo que costaría replicar a precio de mercado sin IA</td>
+          </tr>
+          <tr>
+            <td>Costo real con Vibe Coding</td>
+            <td><strong>$96M CLP</strong></td>
+            <td><span class="pill pill-blue">F</span></td>
+            <td>Eficiencia IA = ventaja competitiva operacional</td>
+          </tr>
+          <tr>
+            <td>Inversión founders (deferred)</td>
+            <td><strong>$48M CLP</strong></td>
+            <td><span class="pill pill-blue">F</span></td>
+            <td>Skin in the game — no dilutivo, recuperable como deuda de la newCo</td>
+          </tr>
+          <tr>
+            <td>Múltiplo de valor vs. inversión</td>
+            <td><strong>5.7x</strong></td>
+            <td><span class="pill pill-blue">F</span></td>
+            <td>$273M construido / $48M invertido = 5.7x eficiencia de capital</td>
+          </tr>
+          <tr>
+            <td>Time-to-market vs. competidor sin IA</td>
+            <td><strong>3× más rápido</strong></td>
+            <td><span class="pill pill-red">S</span></td>
+            <td>DomestikCo tardó 18 meses en llegar donde Poppins está en 6</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="highlight highlight-pink" style="margin-top:16px">
+    <div class="h-title">Narrativa de valorización del activo construido</div>
+    <div style="font-size:14px;line-height:1.7;margin-top:8px">
+      <strong>"Poppins llegó a ronda con un producto terminado que costaría $273M CLP replicar.
+      Lo construimos en 6 meses con un equipo de 2, gastando $48M CLP en tiempo de founders — sin caja.
+      Eso es 5.7x de eficiencia de capital antes de levantar un peso de inversión externa."</strong>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- TAB 3: PLAN DE CAPITAL                             -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="panel" id="tab-capital">
+
+  <div class="sc-toggle" id="sc-toggle">
+    <button class="sc-btn active" data-sc="12">12 meses</button>
+    <button class="sc-btn" data-sc="18">18 meses</button>
+  </div>
+
+  <!-- 12 MONTHS -->
+  <div id="sc-12">
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Capital a levantar</div><div class="kpi-value formula">$75M CLP</div><div class="kpi-note">≈ $75K USD</div></div>
+      <div class="kpi"><div class="kpi-label">Runway</div><div class="kpi-value formula">12 meses</div><div class="kpi-note">desde cierre</div></div>
+      <div class="kpi"><div class="kpi-label">Burn mensual</div><div class="kpi-value formula">$4.3M CLP</div><div class="kpi-note">personas + infra + mktg</div></div>
+      <div class="kpi"><div class="kpi-label">CAP SAFE</div><div class="kpi-value supuesto">$300M CLP</div><div class="kpi-note">post-money</div></div>
+      <div class="kpi"><div class="kpi-label">Dilución implícita</div><div class="kpi-value formula">25%</div><div class="kpi-note">$75M / $300M</div></div>
+      <div class="kpi"><div class="kpi-label">Ángeles target</div><div class="kpi-value supuesto">4–5</div><div class="kpi-note">$15M–$20M c/u</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Distribución del capital (12 meses)</div>
+      <div class="stack-bar">
+        <div class="stack-seg" style="flex:50;background:var(--navy)">Personas 50%</div>
+        <div class="stack-seg" style="flex:20;background:var(--pink)">Mktg 20%</div>
+        <div class="stack-seg" style="flex:10;background:var(--purple)">Deuda founders 10%</div>
+        <div class="stack-seg" style="flex:10;background:var(--amber)">Legal/Admin 7%</div>
+        <div class="stack-seg" style="flex:10;background:var(--green)">Infra+bots 8%</div>
+        <div class="stack-seg" style="flex:5;background:#6B7280">Buffer 5%</div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Categoría</th><th>12m total</th><th>%</th><th>Detalle</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Personas (founders + dev)</strong></td>
+              <td class="formula">$37.5M CLP</td>
+              <td>50%</td>
+              <td>Seba $1.5M + Tooxs $900K + dev PT $700K = $3.1M × 12 ≈ $37.5M<br><small class="supuesto">Salarios parciales — escalan con ingresos del producto</small></td>
+            </tr>
+            <tr>
+              <td><strong>Marketing &amp; ventas</strong></td>
+              <td class="supuesto">$15M CLP</td>
+              <td>20%</td>
+              <td>Ads $500K/mes (primeros 6m) + content + eventos</td>
+            </tr>
+            <tr>
+              <td><strong>Deuda founders (deferred salary)</strong></td>
+              <td class="formula">$7.5M CLP</td>
+              <td>10%</td>
+              <td>Recupera parcialmente los $21M diferidos ($48M total inversión)</td>
+            </tr>
+            <tr>
+              <td><strong>Legal + constitución NewCo</strong></td>
+              <td class="supuesto">$5.25M CLP</td>
+              <td>7%</td>
+              <td>SpA + pacto + contratos IP + asesoría 12m</td>
+            </tr>
+            <tr>
+              <td><strong>Infra + bots + SaaS</strong></td>
+              <td class="formula">$6M CLP</td>
+              <td>8%</td>
+              <td>$500K/mes bots + $99K infra = $599K × 12</td>
+            </tr>
+            <tr>
+              <td><strong>Buffer contingencia</strong></td>
+              <td class="supuesto">$3.75M CLP</td>
+              <td>5%</td>
+              <td>Imprevistos, iteraciones de producto</td>
+            </tr>
+            <tr style="background:rgba(27,21,100,.04)">
+              <td><strong>TOTAL</strong></td>
+              <td class="formula"><strong>$75M CLP</strong></td>
+              <td>100%</td>
+              <td>≈ $75,000 USD</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Timeline de hitos (12 meses)</div>
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-dot" style="background:var(--navy);color:#fff">M0</div>
+          <div class="tl-content">
+            <div class="tl-title">Constitución NewCo + cierre SAFE</div>
+            <div class="tl-desc">Constituir SpA · Pacto accionistas Seba 50% / Tooxs 50% · Firmar SAFE con ángeles · Transfer IP a la newCo</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="background:var(--pink);color:#fff">M1</div>
+          <div class="tl-content">
+            <div class="tl-title">Launch producto + primeros clientes</div>
+            <div class="tl-desc">Beta pagada con 10–20 hogares piloto · Onboarding presencial · Recolección feedback · Ajustes producto</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="background:var(--amber);color:#fff">M3</div>
+          <div class="tl-content">
+            <div class="tl-title">50 clientes pagando</div>
+            <div class="tl-desc">Validar CAC real · Activar bot SDR para escala · Primer MRR > $500K CLP · 1.5 UF ARR/cliente</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="background:var(--purple);color:#fff">M6</div>
+          <div class="tl-content">
+            <div class="tl-title">150 clientes → MRR $2.7M CLP</div>
+            <div class="tl-desc">Activar canal BUK partnership · Lanzar plan familias $17,991/mes · Break-even de bots validado</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="background:var(--green);color:#fff">M9</div>
+          <div class="tl-content">
+            <div class="tl-title">350 clientes → MRR $6.3M CLP</div>
+            <div class="tl-desc">Runway < 6 meses: preparar Seed round. MRR cubre infra + bots. Seba y Tooxs en salario completo.</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="background:var(--blue);color:#fff">M12</div>
+          <div class="tl-content">
+            <div class="tl-title">600+ clientes → Seed / conversión SAFE</div>
+            <div class="tl-desc">ARR > $129M CLP · SAFE convierte a equity en Seed round · Valuation para Seed: $1.5B-2B CLP target</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 18 MONTHS -->
+  <div id="sc-18" style="display:none">
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Capital a levantar</div><div class="kpi-value formula">$105M CLP</div><div class="kpi-note">≈ $105K USD</div></div>
+      <div class="kpi"><div class="kpi-label">Runway</div><div class="kpi-value formula">18 meses</div><div class="kpi-note">mayor cushion</div></div>
+      <div class="kpi"><div class="kpi-label">Burn mensual</div><div class="kpi-value formula">$5.5–6.5M CLP</div><div class="kpi-note">crece con mktg</div></div>
+      <div class="kpi"><div class="kpi-label">CAP SAFE</div><div class="kpi-value supuesto">$350M CLP</div><div class="kpi-note">post-money (mayor CAP)</div></div>
+      <div class="kpi"><div class="kpi-label">Dilución implícita</div><div class="kpi-value formula">30%</div><div class="kpi-note">$105M / $350M</div></div>
+      <div class="kpi"><div class="kpi-label">Ángeles target</div><div class="kpi-value supuesto">5–7</div><div class="kpi-note">$15M–$20M c/u</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Distribución del capital (18 meses)</div>
+      <div class="stack-bar">
+        <div class="stack-seg" style="flex:48;background:var(--navy)">Personas 48%</div>
+        <div class="stack-seg" style="flex:22;background:var(--pink)">Mktg 22%</div>
+        <div class="stack-seg" style="flex:10;background:var(--purple)">Deuda founders 10%</div>
+        <div class="stack-seg" style="flex:10;background:var(--amber)">Legal 7%</div>
+        <div class="stack-seg" style="flex:5;background:var(--green)">Infra 8%</div>
+        <div class="stack-seg" style="flex:5;background:#6B7280">Buffer 5%</div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Categoría</th><th>18m total</th><th>%</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Personas (founders + dev)</strong></td><td class="formula">$50.4M CLP</td><td>48%</td></tr>
+            <tr><td><strong>Marketing &amp; ventas</strong></td><td class="supuesto">$23.1M CLP</td><td>22%</td></tr>
+            <tr><td><strong>Deuda founders</strong></td><td class="formula">$10.5M CLP</td><td>10%</td></tr>
+            <tr><td><strong>Legal + constitución</strong></td><td class="supuesto">$7.35M CLP</td><td>7%</td></tr>
+            <tr><td><strong>Infra + bots + SaaS</strong></td><td class="formula">$8.4M CLP</td><td>8%</td></tr>
+            <tr><td><strong>Buffer contingencia</strong></td><td class="supuesto">$5.25M CLP</td><td>5%</td></tr>
+            <tr style="background:rgba(27,21,100,.04)"><td><strong>TOTAL</strong></td><td class="formula"><strong>$105M CLP</strong></td><td>100%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="highlight highlight-navy">
+      <div class="h-title">¿Por qué 18 meses es mejor para el pitch?</div>
+      <div style="font-size:13px;line-height:1.7;margin-top:6px">
+        Mayor runway = más tiempo para llegar a <strong>1,000 clientes pagando antes del Seed.</strong>
+        Con 1,000 clientes a $17,991/mes el MRR sería $18M CLP/mes → ARR $216M CLP.
+        Un múltiplo 8x ARR daría una valuación Seed de <strong>$1.7B CLP ($1.7M USD)</strong> —
+        suficiente para que el SAFE con CAP $350M convierta con buena ganancia para los ángeles (4.9x múltiplo).
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- TAB 4: INSTRUMENTOS SAFE + EQUITY                 -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="panel" id="tab-safe">
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Instrumento</div><div class="kpi-value" style="font-size:16px">SAFE → Equity</div><div class="kpi-note">post-money CAP</div></div>
+    <div class="kpi"><div class="kpi-label">Estructura societaria</div><div class="kpi-value" style="font-size:16px">NewCo SpA</div><div class="kpi-note">a constituir</div></div>
+    <div class="kpi"><div class="kpi-label">Cap table inicial</div><div class="kpi-value formula">50/50</div><div class="kpi-note">Seba / Tooxs</div></div>
+    <div class="kpi"><div class="kpi-label">IP transferida</div><div class="kpi-value supuesto">Sí</div><div class="kpi-note">condición del SAFE</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Cap table proyectada (post-SAFE conversion)</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Momento</th><th>Sebastián</th><th>Tooxs</th><th>Ángeles SAFE</th><th>ESOP futuro</th><th>Valuación</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Hoy (antes de newCo)</strong></td>
+            <td class="ancla">50%</td><td class="ancla">50%</td><td>—</td><td>—</td><td class="formula">$250M CLP base</td>
+          </tr>
+          <tr>
+            <td><strong>Post-ronda ángel (SAFE)</strong></td>
+            <td class="formula">~50%</td><td class="formula">~50%</td>
+            <td class="formula">25–30% (CAP $300–350M)</td><td>—</td>
+            <td class="formula">$300–350M CLP post-money</td>
+          </tr>
+          <tr>
+            <td><strong>Post-Seed (conversión SAFE)</strong></td>
+            <td class="supuesto">~35%</td><td class="supuesto">~35%</td>
+            <td class="supuesto">~20% (convertido)</td><td class="supuesto">10%</td>
+            <td class="supuesto">$1.5–2B CLP (8×ARR)</td>
+          </tr>
+          <tr>
+            <td><strong>Serie A (si aplica)</strong></td>
+            <td class="supuesto">~25%</td><td class="supuesto">~25%</td>
+            <td class="supuesto">~15%</td><td class="supuesto">15%</td>
+            <td class="supuesto">$5–8B CLP</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Términos del SAFE (recomendado)</div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px">Términos clave</div>
+        <div class="info-row"><span class="info-key">Instrumento</span><span class="info-val">SAFE Post-Money (Y Combinator adaptado)</span></div>
+        <div class="info-row"><span class="info-key">CAP valuation (12m raise)</span><span class="info-val formula">$300M CLP</span></div>
+        <div class="info-row"><span class="info-key">CAP valuation (18m raise)</span><span class="info-val formula">$350M CLP</span></div>
+        <div class="info-row"><span class="info-key">Descuento</span><span class="info-val supuesto">20% (si no CAP)</span></div>
+        <div class="info-row"><span class="info-key">Conversión trigger</span><span class="info-val">Seed equity round ≥ $200M CLP</span></div>
+        <div class="info-row"><span class="info-key">Pro-rata right</span><span class="info-val">Sí (ángeles > $20M CLP)</span></div>
+        <div class="info-row"><span class="info-key">Information rights</span><span class="info-val">Trimestral + anual auditado</span></div>
+        <div class="info-row"><span class="info-key">Liquidation preference</span><span class="info-val">1x no-participating</span></div>
+        <div class="info-row"><span class="info-key">Vesting founders</span><span class="info-val supuesto">4 años, cliff 1 año</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px">Simulador retorno ángel</div>
+        <div style="font-size:12px;color:var(--fg2);margin-bottom:12px">Ángel invierte $20M CLP en SAFE CAP $300M CLP</div>
+        <div class="info-row"><span class="info-key">% adquirido (post-money)</span><span class="info-val formula">6.67%</span></div>
+        <div class="info-row"><span class="info-key">Escenario base (Seed 8×ARR)</span><span class="info-val supuesto">$1.5B CLP valuación</span></div>
+        <div class="info-row"><span class="info-key">Valor participación</span><span class="info-val formula">$100M CLP</span></div>
+        <div class="info-row"><span class="info-key">Retorno múltiplo</span><span class="info-val formula green">5× ($20M → $100M)</span></div>
+        <div style="border-top:1px dashed var(--border);margin:10px 0"></div>
+        <div class="info-row"><span class="info-key">Escenario upside (12×ARR)</span><span class="info-val supuesto">$2.3B CLP valuación</span></div>
+        <div class="info-row"><span class="info-key">Valor participación</span><span class="info-val formula">$153M CLP</span></div>
+        <div class="info-row"><span class="info-key">Retorno múltiplo</span><span class="info-val formula green">7.7× ($20M → $153M)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Checklist constitución NewCo (pre-ronda)</div>
+    <div class="card">
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-dot" style="background:var(--navy);color:#fff;font-size:11px">1</div>
+          <div class="tl-content">
+            <div class="tl-title">Constituir SpA "Poppins Technologies SpA"</div>
+            <div class="tl-desc">Notaría → SII → CBR. Capital inicial simbólico ($100K). Objeto social amplio (software + fintech). Plazo: ~5 días hábiles. Costo: ~$200K–$400K CLP</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="background:var(--pink);color:#fff;font-size:11px">2</div>
+          <div class="tl-content">
+            <div class="tl-title">Pacto de accionistas</div>
+            <div class="tl-desc">Seba 50% / Tooxs 50% · Vesting 4 años cliff 1 · Drag-along, tag-along · Restricción transferencia acciones · IP assignment cláusula</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="background:var(--amber);color:#fff;font-size:11px">3</div>
+          <div class="tl-content">
+            <div class="tl-title">Transferencia de IP a la newCo</div>
+            <div class="tl-desc">Contrato cesión de derechos IP (código fuente, marca Poppins, dominio poppins.cl, cuentas GitHub/Supabase/Vercel). Valorizarla como aporte en especie.</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="background:var(--purple);color:#fff;font-size:11px">4</div>
+          <div class="tl-content">
+            <div class="tl-title">SAFE template + side letter ángeles</div>
+            <div class="tl-desc">Adaptar YC SAFE post-money a derecho chileno · Side letter con pro-rata rights · Definir MFN clause para primeros 3 ángeles</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="background:var(--green);color:#fff;font-size:11px">5</div>
+          <div class="tl-content">
+            <div class="tl-title">Banco + cuenta empresa + inicio actividades SII</div>
+            <div class="tl-desc">Cuenta corriente empresa · Inicio de actividades SII (giro: desarrollo software) · Boletas de honorarios o contratos founders</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="highlight highlight-pink">
+    <div class="h-title">Mensaje para el ángel inversionista</div>
+    <div style="font-size:14px;line-height:1.75;margin-top:8px">
+      <em>"Estamos levantando <strong>$75M–$105M CLP</strong> en SAFE con CAP de <strong>$300M–$350M CLP</strong>
+      para 12–18 meses de runway. El dinero va a comercializar una plataforma ya construida —
+      no a desarrollarla. Ya existen <strong>$273M CLP de producto</strong> construidos con cero inversión externa.
+      Buscamos 4–7 ángeles, tickets de <strong>$15M–$20M CLP</strong>, retorno objetivo <strong>5–8× en 24–36 meses</strong>
+      vía conversión en Seed round."</em>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Poppins Technologies SpA (a constituir) · Documento confidencial para uso interno ·
+  Generado octubre 2026 · <span class="supuesto">S = supuesto</span> · <span class="ancla">A = dato real</span> · <span class="formula">F = calculado</span>
+</footer>
+
+<script>
+// Tabs
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+// Scenario toggle
+document.querySelectorAll('.sc-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.sc-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('sc-12').style.display = b.dataset.sc === '12' ? '' : 'none';
+    document.getElementById('sc-18').style.display = b.dataset.sc === '18' ? '' : 'none';
+  });
+});
+</script>
+</body>
+</html>
